@@ -36,62 +36,48 @@ To stop the app later, press `Ctrl+C` in the terminal.
 ## 3. How to use it
 
 The interface is a **control deck**: the camera fills the left, and a panel on the
-right has one **card per effect** (status, calibrate, clear, and its own
-sensitivity), with global controls along the bottom.
+right has one **card per effect**, with global controls along the bottom.
 
 ### Step 1 — Start the camera
 Click **▶ Start** (bottom of the panel). You'll see yourself (mirrored, like a
 selfie). The live dot turns green, and the status line shows hand detection + FPS.
 Click **■ Stop** any time to release the camera.
 
-### Step 2 — Calibrate your gestures
-Three effects use a hand symbol *you* choose. On that effect's card click
-**🎯 Calibrate** (or **↻ Recalibrate** if already set):
+### Step 2 — Pick an activation pose per effect
+Three effects fire on a hand pose. Each card has an **"Activate" dropdown** — just
+pick the pose you want from the built-in set:
 
-1. A 3-2-1 countdown starts. Get your hand ready.
-2. When it says **"hold your symbol…"**, hold your chosen pose steady for a second.
-   It captures and averages your hand, then saves it. The card badge flips to
-   **set ✓**.
+| Pose | | Pose | |
+|------|--|------|--|
+| ✋ Open hand | ✊ Fist | ✌️ Peace | ☝️ Point |
+| 🤏 Pinch | 🤘 Rock | 👍 Thumbs up | ✎ Custom (record your own) |
 
-Pick a *distinct* pose for each so they don't collide — e.g.:
+Defaults: ⚡ Lightning = ✌️ Peace, 💥 Blast = ☝️ Point, ✏️ Draw = 🤏 Pinch.
+Pick a *distinct* pose for each so they don't collide. Choices are **saved in the
+browser** and survive restarts.
 
-| Effect | Suggested symbol | What it does |
-|--------|------------------|--------------|
-| ⚡ **Lightning** | Two fingers up (peace sign) | Sparks stream from your fingertips while held |
-| 💥 **Blast** | Open palm pushed toward camera | One-shot shockwave + flash |
-| ✏️ **Draw** | Pinch (thumb + index together) | Draws glowing neon lines that follow your finger |
-| 🌙 **Dim** | *Automatic — no calibration* | **Close your hand into a fist** to slowly dim the room; **open it** to fade back up |
-| 🔥 **Fire Breath** | *Automatic — no calibration* | **Open your mouth wide** and breathe a stream of fire in the direction you face |
+**Custom (record your own):** choose **✎ Custom** in the dropdown to record your
+own hand symbol — a 3-2-1 countdown, then hold your pose. A **strict ↔ loose**
+sensitivity slider and a **✕** (clear) appear for custom gestures.
 
-Your calibration is **saved in the browser** and survives restarts.
-
-> **Heads-up:** the 🌙 **Dim** effect watches for an open hand vs. a fist
-> automatically, so **don't calibrate another effect as a fist** — pick something
-> else (peace sign, pinch, etc.) so they don't fight.
+> **Heads-up:** 🌙 **Dim** automatically watches for open-hand vs. fist, so avoid
+> using **Fist** as an activation pose for another effect — they'd fight.
 
 ### Step 3 — Play!
-Make a saved symbol and the effect fires; its card glows in the effect's color.
+Make an effect's pose and it fires; its card glows in the effect's color.
 - **Lightning** and **Draw** are *held* — they run while you hold the pose.
-- **Blast** is *one-shot* — fires once per gesture.
-- **Dim** is *automatic & gradual* — fist fades the room down over ~1.5s, opening
-  your hand fades it back up. Untick **Enabled** on the Dim card to switch it off.
-- **Fire Breath** is *automatic* — open your mouth wide and fire streams out,
-  following your head tilt; intensity scales with how wide you open. It uses face
-  tracking (a second model loads on first use). Untick **Enabled** to turn it off
-  if you'd rather not run face tracking.
+- **Blast** is *one-shot* — fires once per pose.
+- **🌙 Dim** is *automatic & gradual* — make a **fist** to fade the room down over
+  ~1.5s, **open your hand** to fade it back up. Untick **Enabled** to switch it off.
+- **🔥 Fire Breath** is **off by default** (it's heavy and rough). Tick **Enabled**
+  on its card to try it: open your mouth wide to breathe fire (loads a face model).
 - **🧽 Clear lines** (on the Draw card) wipes everything you've drawn.
 
-### Step 4 — Customize each effect
-- **Per-effect sensitivity slider** (strict ↔ loose): firing by accident? drag
-  toward **strict**. Not firing? drag toward **loose**.
-- **✕** on a card clears just that one gesture so you can re-record it.
-- **🗑 Clear all** wipes every saved gesture at once.
-- **Show tracking points** (top of the panel): overlays the 21-point hand
-  skeleton on the video so you can see exactly what's being tracked.
-
-### Step 5 — Back up / move your gestures
-- **⬇ Export** saves your calibration to a `cammods-gestures.json` file.
-- **⬆ Import** loads one back (e.g. on another computer).
+### Step 4 — Other controls
+- **Show tracking points** (top of the panel): overlays the 21-point hand skeleton
+  on the video so you can see exactly what's being tracked.
+- **🗑 Reset all** restores every effect to its default pose and clears custom gestures.
+- **⬇ Export / ⬆ Import** back up or move your custom gestures as a JSON file.
 
 ---
 
@@ -152,9 +138,12 @@ Webcam → HandTracker (MediaPipe) → GestureEngine → EffectDriver → Effect
 | `src/overlay.ts` | Hand-skeleton debug overlay |
 | `src/gesture/normalize.ts` | Translation/scale-invariant landmark normalization |
 | `src/gesture/distance.ts` | Pose similarity scoring |
-| `src/gesture/gestureEngine.ts` | Template matching + threshold + cooldown |
-| `src/gesture/handPose.ts` | Built-in open-hand / fist detection (used by Dim) |
-| `src/gesture/templateStore.ts` | localStorage persistence + per-gesture/all clear + export/import |
+| `src/gesture/gestureEngine.ts` | Per-effect gesture bindings (preset or custom) + cooldown |
+| `src/gesture/handGestures.ts` | Built-in pose presets (open/fist/peace/point/rock/thumbsup/pinch) |
+| `src/gesture/bindings.ts` | Preset + custom binding factories |
+| `src/gesture/bindingStore.ts` | Persists each effect's chosen activation pose |
+| `src/gesture/handPose.ts` | Open-hand / fist detection (used by Dim) |
+| `src/gesture/templateStore.ts` | Custom-gesture persistence + export/import |
 | `src/calibration.ts` | Averaged gesture capture |
 | `src/effects/effectDriver.ts` | Maps gesture events → effect lifecycle (hold/toggle/oneshot) |
 | `src/effects/particleSystem.ts` | Shared particle utility |

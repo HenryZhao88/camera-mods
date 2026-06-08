@@ -1,7 +1,10 @@
 import { Camera } from './camera';
 import { HandTracker } from './handTracker';
 import { FaceTracker } from './faceTracker';
-import { GestureEngine } from './gesture/gestureEngine';
+import { GestureEngine, type GestureBinding } from './gesture/gestureEngine';
+import { presetBinding, customBinding } from './gesture/bindings';
+import { GESTURE_PRESETS, GESTURE_IDS, type GestureId } from './gesture/handGestures';
+import { saveChoice, getChoice, type GestureChoice } from './gesture/bindingStore';
 import {
   loadTemplates, removeTemplate, clearTemplates, exportTemplates, importTemplates,
 } from './gesture/templateStore';
@@ -35,11 +38,12 @@ const dim = new DimLights();
 const lightning = new FingertipLightning();
 const blast = new PalmBlast();
 const fire = new FireBreath();
+fire.enabled = false; // off by default — face tracking is heavy and the effect is rough
 let faceReady = false;
 
 // Render order (back to front): dim darkens first, glowing effects layer on top.
 const effects: Effect[] = [dim, lightning, blast, fire, pinch];
-const engine = new GestureEngine(loadTemplates(), { defaultThreshold: 0.6, cooldownMs: 800 });
+const engine = new GestureEngine([], { cooldownMs: 800 });
 let compositor: Compositor | null = null;
 let running = false;
 
@@ -49,51 +53,58 @@ interface CardDef {
   name: string;
   color: string;
   desc: string;
-  calibratable: boolean;
-  extra?: () => HTMLElement; // optional extra control (clear lines / enable toggle)
+  bindable: boolean;             // has an activation-gesture dropdown
+  defaultGesture?: GestureId;    // initial preset for bindable effects
+  extra?: () => HTMLElement;     // optional extra control (clear lines / enable toggle)
 }
 
 const CARDS: CardDef[] = [
   {
     id: 'fingertip-lightning', icon: '⚡', name: 'Lightning', color: '#7df9ff',
     desc: 'Sparks stream from your fingertips <b>while you hold</b> the gesture.',
-    calibratable: true,
+    bindable: true, defaultGesture: 'peace',
   },
   {
     id: 'palm-blast', icon: '💥', name: 'Blast', color: '#ffd27d',
     desc: 'A shockwave + flash <b>fires once</b> each time you make the gesture.',
-    calibratable: true,
+    bindable: true, defaultGesture: 'point',
   },
   {
     id: 'pinch-draw', icon: '✏️', name: 'Draw', color: '#39ff14',
     desc: 'Hold the gesture to <b>draw neon lines</b> that follow your finger.',
-    calibratable: true,
+    bindable: true, defaultGesture: 'pinch',
     extra: () => button('🧽 Clear lines', () => pinch.clear()),
   },
   {
     id: 'dim-lights', icon: '🌙', name: 'Dim', color: '#8aa0ff',
     desc: 'Automatic — close into a <b>fist</b> to slowly dim the room, open your <b>hand</b> to fade it back up.',
-    calibratable: false,
+    bindable: false,
     extra: dimToggle,
   },
   {
     id: 'fire-breath', icon: '🔥', name: 'Fire Breath', color: '#ff7a18',
-    desc: 'Automatic — <b>open your mouth wide</b> and breathe a stream of fire in the direction you face. Uses face tracking.',
-    calibratable: false,
+    desc: 'Automatic — <b>open your mouth wide</b> and breathe fire. Uses face tracking (slower). Off by default.',
+    bindable: false,
     extra: fireToggle,
   },
 ];
 
+const BINDABLE = CARDS.filter(c => c.bindable);
+
 const cardEls = new Map<string, HTMLDivElement>();
 const flashUntil = new Map<string, number>(); // effectId -> ms, for one-shot highlight
-const sensitivity = new Map<string, number>(); // effectId -> threshold, survives re-renders
+const sensitivity = new Map<string, number>(); // effectId -> custom threshold, survives re-renders
 const DEFAULT_THRESHOLD = 0.6;
 
 // ---- helpers ----
 function setState(text: string) { stateEl.textContent = text; }
 
-function isSet(effectId: string): boolean {
+function hasTemplate(effectId: string): boolean {
   return loadTemplates().some(t => t.effectId === effectId);
+}
+
+function choiceFor(def: CardDef): GestureChoice {
+  return getChoice(def.id, def.defaultGesture ?? 'open');
 }
 
 function button(text: string, onClick: () => void): HTMLButtonElement {
@@ -124,7 +135,6 @@ function fireToggle(): HTMLElement {
     fire.enabled = input.checked;
     if (input.checked && running) {
       const ok = await ensureFace();
-      // honor the user's latest intent if they toggled off during the load
       if (compositor) compositor.trackFace = ok && input.checked;
       if (!ok) { fire.enabled = false; input.checked = false; }
     } else if (!input.checked && compositor) {
@@ -142,7 +152,6 @@ async function ensureFace(): Promise<boolean> {
   try {
     await faceTracker.init();
     faceReady = true;
-    setState('live');
     return true;
   } catch {
     setState('face model failed to load');
@@ -150,7 +159,33 @@ async function ensureFace(): Promise<boolean> {
   }
 }
 
+// ---- bindings ----
+// Rebuild the engine's bindings from each bindable effect's saved choice.
+function rebuildBindings() {
+  const bindings: GestureBinding[] = [];
+  for (const def of BINDABLE) {
+    const choice = choiceFor(def);
+    if (choice === 'custom') {
+      const t = loadTemplates().find(x => x.effectId === def.id);
+      if (t) {
+        bindings.push(customBinding(def.id, t.landmarks, () => sensitivity.get(def.id) ?? DEFAULT_THRESHOLD));
+      }
+    } else {
+      // guard against a tampered/unknown stored pose falling through to a crash
+      const preset = GESTURE_PRESETS[choice] ? choice : (def.defaultGesture ?? 'open');
+      bindings.push(presetBinding(def.id, preset));
+    }
+  }
+  engine.setBindings(bindings);
+}
+
 // ---- card rendering ----
+function activationBadge(def: CardDef): string {
+  const choice = choiceFor(def);
+  if (choice === 'custom') return hasTemplate(def.id) ? 'custom' : 'record…';
+  return GESTURE_PRESETS[choice].emoji;
+}
+
 function renderCards() {
   cardsEl.innerHTML = '';
   cardEls.clear();
@@ -166,9 +201,8 @@ function renderCards() {
     const icon = document.createElement('span'); icon.className = 'icon'; icon.textContent = def.icon;
     const name = document.createElement('span'); name.className = 'name'; name.textContent = def.name;
     const badge = document.createElement('span'); badge.className = 'badge';
-    if (!def.calibratable) { badge.classList.add('auto'); badge.textContent = 'auto'; }
-    else if (isSet(def.id)) { badge.classList.add('set'); badge.textContent = 'set ✓'; }
-    else { badge.textContent = 'not set'; }
+    if (!def.bindable) { badge.classList.add('auto'); badge.textContent = 'auto'; }
+    else { badge.classList.add('set'); badge.textContent = activationBadge(def); }
     top.append(icon, name, badge);
 
     const desc = document.createElement('div');
@@ -177,34 +211,67 @@ function renderCards() {
 
     card.append(top, desc);
 
-    if (def.calibratable) {
-      const set = isSet(def.id);
-      const row = document.createElement('div');
-      row.className = 'row';
-      const cal = button(set ? '↻ Recalibrate' : '🎯 Calibrate', () => calibrateEffect(def.id));
-      cal.className = 'primary';
-      const clr = button('✕', () => clearEffect(def.id));
-      clr.className = 'icon-btn';
-      clr.title = 'Clear this gesture';
-      clr.disabled = !set;
-      row.append(cal, clr);
-      if (def.extra) row.append(def.extra());
-      card.append(row);
+    if (def.bindable) {
+      const choice = choiceFor(def);
 
-      // per-gesture sensitivity
-      const sens = document.createElement('div');
-      sens.className = 'sens';
-      const slider = document.createElement('input');
-      slider.type = 'range'; slider.min = '0.2'; slider.max = '1.2'; slider.step = '0.05';
-      slider.value = String(sensitivity.get(def.id) ?? DEFAULT_THRESHOLD);
-      slider.oninput = () => {
-        const v = parseFloat(slider.value);
-        sensitivity.set(def.id, v);
-        engine.setThreshold(def.id, v);
+      // activation-gesture dropdown
+      const actRow = document.createElement('div');
+      actRow.className = 'row';
+      const label = document.createElement('span');
+      label.className = 'field-label';
+      label.textContent = 'Activate';
+      const select = document.createElement('select');
+      for (const gid of GESTURE_IDS) {
+        const opt = document.createElement('option');
+        opt.value = gid;
+        opt.textContent = `${GESTURE_PRESETS[gid].emoji}  ${GESTURE_PRESETS[gid].label}`;
+        select.append(opt);
+      }
+      const customOpt = document.createElement('option');
+      customOpt.value = 'custom';
+      customOpt.textContent = '✎  Custom (record)…';
+      select.append(customOpt);
+      select.value = choice;
+      select.onchange = () => {
+        const val = select.value as GestureChoice;
+        if (val === 'custom') {
+          recordCustom(def.id); // saves choice on success, reverts the select on failure
+        } else {
+          saveChoice(def.id, val);
+          rebuildBindings();
+          renderCards();
+          setState(`${def.name}: ${GESTURE_PRESETS[val].label}`);
+        }
       };
-      sens.append(document.createTextNode('strict'), slider, document.createTextNode('loose'));
-      card.append(sens);
-    } else if (def.extra) {
+      actRow.append(label, select);
+      card.append(actRow);
+
+      // custom-only controls: re-record, clear, sensitivity
+      if (choice === 'custom') {
+        const set = hasTemplate(def.id);
+        const row = document.createElement('div');
+        row.className = 'row';
+        const rec = button(set ? '↻ Re-record' : '🎯 Record', () => recordCustom(def.id));
+        rec.className = 'primary';
+        const clr = button('✕', () => clearCustom(def.id));
+        clr.className = 'icon-btn';
+        clr.title = 'Clear custom gesture';
+        clr.disabled = !set;
+        row.append(rec, clr);
+        card.append(row);
+
+        const sens = document.createElement('div');
+        sens.className = 'sens';
+        const slider = document.createElement('input');
+        slider.type = 'range'; slider.min = '0.2'; slider.max = '1.2'; slider.step = '0.05';
+        slider.value = String(sensitivity.get(def.id) ?? DEFAULT_THRESHOLD);
+        slider.oninput = () => { sensitivity.set(def.id, parseFloat(slider.value)); };
+        sens.append(document.createTextNode('strict'), slider, document.createTextNode('loose'));
+        card.append(sens);
+      }
+    }
+
+    if (def.extra) {
       const row = document.createElement('div');
       row.className = 'row';
       row.append(def.extra());
@@ -214,39 +281,43 @@ function renderCards() {
 }
 
 // ---- actions ----
-async function calibrateEffect(effectId: string) {
-  if (!running) { setState('press start first'); return; }
+async function recordCustom(effectId: string) {
+  if (!running) { setState('press start first'); renderCards(); return; }
   compositor?.stop();
   try {
     for (let n = 3; n >= 1; n--) {
-      setState(`calibrating in ${n}…`);
+      setState(`recording in ${n}…`);
       await countdown(1, () => {});
     }
-    setState('hold your symbol…');
+    setState('hold your gesture…');
     await calibrate(effectId, camera, tracker);
-    engine.setTemplates(loadTemplates());
-    setState('saved ✓');
+    saveChoice(effectId, 'custom');
+    setState('custom gesture saved ✓');
   } catch (err) {
     setState((err as Error).message);
   } finally {
+    rebuildBindings();
     renderCards();
     compositor?.start();
   }
 }
 
-function clearEffect(effectId: string) {
+function clearCustom(effectId: string) {
   removeTemplate(effectId);
-  engine.setTemplates(loadTemplates());
+  // revert to this effect's default preset
+  const def = BINDABLE.find(d => d.id === effectId);
+  if (def?.defaultGesture) saveChoice(effectId, def.defaultGesture);
+  rebuildBindings();
   renderCards();
-  setState('cleared');
+  setState('custom gesture cleared');
 }
 
-function clearAll() {
-  if (loadTemplates().length === 0) { setState('nothing to clear'); return; }
+function resetAll() {
   clearTemplates();
-  engine.setTemplates([]);
+  localStorage.removeItem('cammods.bindings');
+  rebuildBindings();
   renderCards();
-  setState('all gestures cleared');
+  setState('reset to defaults');
 }
 
 function doExport() {
@@ -262,7 +333,7 @@ function doImport(file: File) {
   file.text().then(txt => {
     try {
       importTemplates(txt);
-      engine.setTemplates(loadTemplates());
+      rebuildBindings();
       renderCards();
       setState('gestures imported');
     } catch (err) {
@@ -282,7 +353,7 @@ async function start() {
     setState('loading hand model…');
     await tracker.init();
     compositor = new Compositor(canvas, camera, tracker, faceTracker, engine, effects, {
-      onFrame: (hand, _scores, fired, active) => {
+      onFrame: (hand, fired, active) => {
         const now = performance.now();
         if (lastFrameTime) {
           const fps = 1000 / (now - lastFrameTime);
@@ -310,9 +381,8 @@ async function start() {
     liveDot.classList.add('live');
     renderGlobals();
 
-    // fire breathing is on by default — load the face model in the background
     if (fire.enabled) {
-      ensureFace().then(ok => { if (compositor) compositor.trackFace = ok; });
+      ensureFace().then(ok => { if (compositor) compositor.trackFace = ok && fire.enabled; });
     }
     setState('live');
   } catch (err) {
@@ -344,12 +414,12 @@ function renderGlobals() {
   startWrap.className = 'start';
   startWrap.append(startBtn);
 
-  const clearAllBtn = button('🗑 Clear all', clearAll);
-  clearAllBtn.className = 'danger';
+  const resetBtn = button('🗑 Reset all', resetAll);
+  resetBtn.className = 'danger';
   const exportBtn = button('⬇ Export', doExport);
   const importBtn = button('⬆ Import', () => fileInput.click());
 
-  globalsEl.append(startWrap, clearAllBtn, exportBtn, importBtn);
+  globalsEl.append(startWrap, resetBtn, exportBtn, importBtn);
 }
 
 // hidden file input for import
@@ -364,6 +434,7 @@ document.body.append(fileInput);
 showPoints.onchange = () => { if (compositor) compositor.showLandmarks = showPoints.checked; };
 
 // ---- boot ----
-hintEl.textContent = 'Tip: give each effect a distinct hand symbol. Pipe into Zoom/Meet via OBS Virtual Camera.';
+hintEl.textContent = 'Pick a distinct activation pose per effect. Pipe into Zoom/Meet via OBS Virtual Camera.';
+rebuildBindings();
 renderCards();
 renderGlobals();
