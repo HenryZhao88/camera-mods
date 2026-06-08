@@ -21,6 +21,7 @@ const cardsEl = document.getElementById('cards') as HTMLDivElement;
 const globalsEl = document.getElementById('globals') as HTMLDivElement;
 const hintEl = document.getElementById('hint') as HTMLDivElement;
 const liveDot = document.getElementById('livedot') as HTMLSpanElement;
+const handEl = document.getElementById('hand') as HTMLSpanElement;
 const stateEl = document.getElementById('state') as HTMLSpanElement;
 const fpsEl = document.getElementById('fps') as HTMLSpanElement;
 const showPoints = document.getElementById('showpoints') as HTMLInputElement;
@@ -298,7 +299,7 @@ async function start() {
             (id === 'fire-breath' && fire.isActive());
           el.classList.toggle('active', lit);
         }
-        setState(hand ? 'hand detected' : 'show your hand');
+        handEl.textContent = hand ? '✋ hand' : 'no hand';
       },
     });
     compositor.showLandmarks = showPoints.checked;
@@ -325,6 +326,7 @@ function stop() {
   liveDot.classList.remove('live');
   idle.classList.remove('hidden');
   fpsEl.textContent = '';
+  handEl.textContent = '—';
   for (const el of cardEls.values()) el.classList.remove('active');
   renderGlobals();
   setState('stopped');
