@@ -73,7 +73,12 @@ Make an effect's pose and it fires; its card glows in the effect's color.
   on its card to try it: open your mouth wide to breathe fire (loads a face model).
 - **🧽 Clear lines** (on the Draw card) wipes everything you've drawn.
 
+Only **one gesture effect fires at a time** — if a pose happens to match two
+effects, the higher one in the list wins, so effects don't stack.
+
 ### Step 4 — Other controls
+- **🧹 Clear screen** instantly wipes everything currently drawn (lines, particles,
+  dim, fire).
 - **Show tracking points** (top of the panel): overlays the 21-point hand skeleton
   on the video so you can see exactly what's being tracked.
 - **🗑 Reset all** restores every effect to its default pose and clears custom gestures.
