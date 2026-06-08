@@ -33,6 +33,7 @@ export class FireBreath implements Effect {
   start(): void {}
   stop(): void {}
   isActive(): boolean { return this.embers.length > 0; }
+  reset(): void { this.embers.length = 0; }
 
   update(dt: number, ctx: RenderContext): void {
     // emit while the mouth is open

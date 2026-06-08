@@ -50,4 +50,23 @@ describe('GestureEngine', () => {
     e.setBindings([toggleBinding('fx', { on: true })]);
     expect(e.update(anyHand, 1000).active.has('fx')).toBe(true);
   });
+
+  it('exclusive mode lets only the first matching binding win', () => {
+    const e = new GestureEngine(
+      [toggleBinding('a', { on: true }), toggleBinding('b', { on: true })],
+      { cooldownMs: 800, exclusive: true },
+    );
+    const r = e.update(anyHand, 0);
+    expect(r.fired).toEqual(['a']);
+    expect([...r.active]).toEqual(['a']);
+  });
+
+  it('non-exclusive mode fires all matching bindings', () => {
+    const e = new GestureEngine(
+      [toggleBinding('a', { on: true }), toggleBinding('b', { on: true })],
+      { cooldownMs: 800 },
+    );
+    const r = e.update(anyHand, 0);
+    expect(r.fired.sort()).toEqual(['a', 'b']);
+  });
 });
