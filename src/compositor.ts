@@ -2,6 +2,7 @@ import type { Camera } from './camera';
 import type { HandTracker } from './handTracker';
 import type { GestureEngine } from './gesture/gestureEngine';
 import { EffectDriver } from './effects/effectDriver';
+import { drawHandSkeleton } from './overlay';
 import type { Effect, HandResult, RenderContext } from './types';
 
 export interface CompositorHooks {
@@ -14,6 +15,7 @@ export interface CompositorHooks {
 }
 
 export class Compositor {
+  showLandmarks = false; // overlay the tracked hand skeleton when true
   private g: CanvasRenderingContext2D;
   private driver: EffectDriver;
   private raf = 0;
@@ -73,6 +75,10 @@ export class Compositor {
     for (const e of this.effects) {
       e.update(dt, ctx);
       if (e.isActive()) e.render(this.g, ctx);
+    }
+
+    if (this.showLandmarks && hand) {
+      drawHandSkeleton(this.g, hand.landmarks, w, h);
     }
   }
 }

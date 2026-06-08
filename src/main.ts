@@ -21,6 +21,7 @@ const hintEl = document.getElementById('hint') as HTMLDivElement;
 const liveDot = document.getElementById('livedot') as HTMLSpanElement;
 const stateEl = document.getElementById('state') as HTMLSpanElement;
 const fpsEl = document.getElementById('fps') as HTMLSpanElement;
+const showPoints = document.getElementById('showpoints') as HTMLInputElement;
 
 // ---- engine + effects ----
 const camera = new Camera();
@@ -253,6 +254,7 @@ async function start() {
         setState(hand ? 'hand detected' : 'show your hand');
       },
     });
+    compositor.showLandmarks = showPoints.checked;
     compositor.start();
     running = true;
     idle.classList.add('hidden');
@@ -301,6 +303,9 @@ fileInput.accept = 'application/json';
 fileInput.className = 'hidden';
 fileInput.onchange = () => { const f = fileInput.files?.[0]; if (f) doImport(f); };
 document.body.append(fileInput);
+
+// live toggle for the tracking overlay (applies immediately + on next start)
+showPoints.onchange = () => { if (compositor) compositor.showLandmarks = showPoints.checked; };
 
 // ---- boot ----
 hintEl.textContent = 'Tip: give each effect a distinct hand symbol. Pipe into Zoom/Meet via OBS Virtual Camera.';
