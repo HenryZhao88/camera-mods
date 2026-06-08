@@ -22,6 +22,7 @@ export class DimLights implements Effect {
   start(): void {}
   stop(): void {}
   isActive(): boolean { return this.level > 0.001; }
+  reset(): void { this.level = 0; this.target = 0; this.pending = null; this.confirm = 0; }
 
   update(dt: number, ctx: RenderContext): void {
     if (!this.enabled) {

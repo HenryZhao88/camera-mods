@@ -15,6 +15,7 @@ export class PalmBlast implements Effect {
   start(): void { this.pending = true; }
   stop(): void {}
   isActive(): boolean { return (this.t >= 0 && this.t < DURATION) || this.ps.count > 0; }
+  reset(): void { this.pending = false; this.t = -1; this.ps.clear(); }
 
   update(dt: number, ctx: RenderContext): void {
     if (this.pending) {

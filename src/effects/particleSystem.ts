@@ -28,5 +28,7 @@ export class ParticleSystem {
     g.globalAlpha = 1;
   }
 
+  clear(): void { this.particles.length = 0; }
+
   get count(): number { return this.particles.length; }
 }

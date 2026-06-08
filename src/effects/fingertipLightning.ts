@@ -12,6 +12,7 @@ export class FingertipLightning implements Effect {
   start(): void { this.held = true; }
   stop(): void { this.held = false; }
   isActive(): boolean { return this.held || this.ps.count > 0; }
+  reset(): void { this.held = false; this.ps.clear(); }
 
   update(dt: number, ctx: RenderContext): void {
     if (this.held && ctx.hand) {

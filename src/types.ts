@@ -37,4 +37,5 @@ export interface Effect {
   update(dt: number, ctx: RenderContext): void;
   render(g: CanvasRenderingContext2D, ctx: RenderContext): void;
   isActive(): boolean;
+  reset?(): void;          // wipe all visible state (used by "Clear screen")
 }

@@ -13,6 +13,7 @@ export class PinchDraw implements Effect {
   stop(): void { this.drawing = false; }
   isActive(): boolean { return this.strokes.length > 0; }
   clear(): void { this.strokes = []; this.current = []; }
+  reset(): void { this.drawing = false; this.clear(); }
 
   update(_dt: number, ctx: RenderContext): void {
     if (this.drawing && ctx.hand) {
