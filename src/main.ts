@@ -43,7 +43,7 @@ let faceReady = false;
 
 // Render order (back to front): dim darkens first, glowing effects layer on top.
 const effects: Effect[] = [dim, lightning, blast, fire, pinch];
-const engine = new GestureEngine([], { cooldownMs: 800 });
+const engine = new GestureEngine([], { cooldownMs: 800, exclusive: true });
 let compositor: Compositor | null = null;
 let running = false;
 
@@ -320,6 +320,12 @@ function resetAll() {
   setState('reset to defaults');
 }
 
+// Wipe everything currently drawn on screen (drawings, particles, dim, fire).
+function clearScreen() {
+  for (const e of effects) e.reset?.();
+  setState('screen cleared');
+}
+
 function doExport() {
   const blob = new Blob([exportTemplates()], { type: 'application/json' });
   const a = document.createElement('a');
@@ -414,12 +420,13 @@ function renderGlobals() {
   startWrap.className = 'start';
   startWrap.append(startBtn);
 
+  const clearBtn = button('🧹 Clear screen', clearScreen);
   const resetBtn = button('🗑 Reset all', resetAll);
   resetBtn.className = 'danger';
   const exportBtn = button('⬇ Export', doExport);
   const importBtn = button('⬆ Import', () => fileInput.click());
 
-  globalsEl.append(startWrap, resetBtn, exportBtn, importBtn);
+  globalsEl.append(startWrap, clearBtn, resetBtn, exportBtn, importBtn);
 }
 
 // hidden file input for import
