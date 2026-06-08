@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mouthOpenness, mouthCenter, breathDirection } from '../src/facePose';
+import { mouthOpenness, mouthCenter, breathDirection, leftEyeCenter, rightEyeCenter } from '../src/facePose';
 import type { Landmark } from '../src/types';
 
 // Build a face with the few landmarks our helpers read.
@@ -57,5 +57,25 @@ describe('breathDirection', () => {
   it('returns a unit vector', () => {
     const d = breathDirection(face({ upper: [3, 4], lower: [3, 4], nose: [0, 0] }));
     expect(Math.hypot(d.x, d.y)).toBeCloseTo(1, 6);
+  });
+});
+
+describe('eye centers', () => {
+  function withEyes(): import('../src/types').Landmark[] {
+    const arr: import('../src/types').Landmark[] = Array.from({ length: 478 }, () => ({ x: 0, y: 0, z: 0 }));
+    // left eye ring 33/133/159/145 around (2,2); right eye 362/263/386/374 around (8,2)
+    [[33, 1, 2], [133, 3, 2], [159, 2, 1], [145, 2, 3]].forEach(([i, x, y]) => (arr[i] = { x, y, z: 0 }));
+    [[362, 7, 2], [263, 9, 2], [386, 8, 1], [374, 8, 3]].forEach(([i, x, y]) => (arr[i] = { x, y, z: 0 }));
+    return arr;
+  }
+  it('averages the left eye ring', () => {
+    const c = leftEyeCenter(withEyes());
+    expect(c.x).toBeCloseTo(2, 6);
+    expect(c.y).toBeCloseTo(2, 6);
+  });
+  it('averages the right eye ring', () => {
+    const c = rightEyeCenter(withEyes());
+    expect(c.x).toBeCloseTo(8, 6);
+    expect(c.y).toBeCloseTo(2, 6);
   });
 });

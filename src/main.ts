@@ -16,7 +16,10 @@ import { DimLights } from './effects/dimLights';
 import { PalmBlast } from './effects/palmBlast';
 import { PinchDraw } from './effects/pinchDraw';
 import { FireBreath } from './effects/fireBreath';
+import { LightningEyes } from './effects/lightningEyes';
+import { GunShot } from './effects/gunShot';
 import type { Effect } from './types';
+import { SCREEN_FILTERS, type ScreenFilter } from './screenFilters';
 
 // ---- elements ----
 const canvas = document.getElementById('view') as HTMLCanvasElement;
@@ -29,6 +32,7 @@ const handEl = document.getElementById('hand') as HTMLSpanElement;
 const stateEl = document.getElementById('state') as HTMLSpanElement;
 const fpsEl = document.getElementById('fps') as HTMLSpanElement;
 const showPoints = document.getElementById('showpoints') as HTMLInputElement;
+const screenFxSelect = document.getElementById('screenfx') as HTMLSelectElement;
 
 // ---- engine + effects ----
 const camera = new Camera();
@@ -39,15 +43,22 @@ const dim = new DimLights();
 const lightning = new FingertipLightning();
 const blast = new PalmBlast();
 const fire = new FireBreath();
+const eyes = new LightningEyes();
+const gun = new GunShot();
 let faceReady = false;
 
-// effects default on, except fire (heavy + rough)
-function effectDefaultEnabled(id: string): boolean { return id !== 'fire-breath'; }
-dim.enabled = isEnabled('dim-lights', true);
-fire.enabled = isEnabled('fire-breath', false);
+// Face-tracked effects default off (a second ML model is heavy); the rest default on.
+const FACE_EFFECTS = new Set(['fire-breath', 'lightning-eyes']);
+function effectDefaultEnabled(id: string): boolean { return !FACE_EFFECTS.has(id); }
+
+// self-driven effects toggled directly via their .enabled flag
+const selfDriven: Record<string, { enabled: boolean }> = {
+  'dim-lights': dim, 'fire-breath': fire, 'lightning-eyes': eyes, 'gun-shot': gun,
+};
+for (const [id, fx] of Object.entries(selfDriven)) fx.enabled = isEnabled(id, effectDefaultEnabled(id));
 
 // Render order (back to front): dim darkens first, glowing effects layer on top.
-const effects: Effect[] = [dim, lightning, blast, fire, pinch];
+const effects: Effect[] = [dim, lightning, blast, fire, eyes, gun, pinch];
 const engine = new GestureEngine([], { cooldownMs: 800, exclusive: true });
 let compositor: Compositor | null = null;
 let running = false;
@@ -79,6 +90,16 @@ const CARDS: CardDef[] = [
     desc: 'Hold the gesture to <b>draw neon lines</b> that follow your finger.',
     bindable: true, defaultGesture: 'pinch',
     extra: () => button('🧽 Clear lines', () => pinch.clear()),
+  },
+  {
+    id: 'gun-shot', icon: '🔫', name: 'Finger Gun', color: '#ff5a5a',
+    desc: 'Make a finger gun (index out, thumb up) and <b>drop your thumb</b> to fire — muzzle flash + bang.',
+    bindable: false,
+  },
+  {
+    id: 'lightning-eyes', icon: '👁️', name: 'Lightning Eyes', color: '#7df9ff',
+    desc: 'Electric arcs crackle from your eyes. Uses face tracking (slower).',
+    bindable: false,
   },
   {
     id: 'dim-lights', icon: '🌙', name: 'Dim', color: '#8aa0ff',
@@ -135,25 +156,35 @@ function enableSwitch(def: CardDef): HTMLElement {
 
 async function setEffectEnabled(effectId: string, on: boolean) {
   setEnabled(effectId, on);
-  if (effectId === 'dim-lights') {
-    dim.enabled = on;
-  } else if (effectId === 'fire-breath') {
-    fire.enabled = on;
-    if (on && running) {
-      const ok = await ensureFace();
-      if (compositor) compositor.trackFace = ok && fire.enabled;
-      if (!ok) { fire.enabled = false; setEnabled('fire-breath', false); }
-    } else if (compositor) {
-      compositor.trackFace = false;
-    }
+  if (!on) effects.find(e => e.id === effectId)?.reset?.(); // clear lingering output
+
+  const sd = selfDriven[effectId];
+  if (sd) {
+    sd.enabled = on;
+    if (FACE_EFFECTS.has(effectId)) await syncFaceTracking();
   } else {
-    if (!on) effects.find(e => e.id === effectId)?.reset?.(); // clear lingering output
     rebuildBindings(); // bindable effect: include/exclude its binding
   }
   renderCards();
 }
 
-// Lazily load the face model the first time fire is needed.
+// Face tracking runs only while at least one face effect is enabled.
+async function syncFaceTracking() {
+  const need = fire.enabled || eyes.enabled;
+  if (need && running) {
+    const ok = await ensureFace();
+    if (compositor) compositor.trackFace = ok;
+    if (!ok) {
+      fire.enabled = eyes.enabled = false;
+      setEnabled('fire-breath', false);
+      setEnabled('lightning-eyes', false);
+    }
+  } else if (compositor) {
+    compositor.trackFace = false;
+  }
+}
+
+// Lazily load the face model the first time a face effect is needed.
 async function ensureFace(): Promise<boolean> {
   if (faceReady) return true;
   setState('loading face model…');
@@ -386,22 +417,23 @@ async function start() {
             active.has(id) ||
             (flashUntil.get(id) ?? 0) > now ||
             (id === 'dim-lights' && dim.isActive()) ||
-            (id === 'fire-breath' && fire.isActive());
+            (id === 'fire-breath' && fire.isActive()) ||
+            (id === 'lightning-eyes' && eyes.isActive()) ||
+            (id === 'gun-shot' && gun.isActive());
           el.classList.toggle('active', lit);
         }
         handEl.textContent = hand ? '✋ hand' : 'no hand';
       },
     });
     compositor.showLandmarks = showPoints.checked;
+    compositor.screenFilter = currentScreenFilter;
     compositor.start();
     running = true;
     idle.classList.add('hidden');
     liveDot.classList.add('live');
     renderGlobals();
 
-    if (fire.enabled) {
-      ensureFace().then(ok => { if (compositor) compositor.trackFace = ok && fire.enabled; });
-    }
+    syncFaceTracking(); // load face model in the background if a face effect is on
     setState('live');
   } catch (err) {
     setState((err as Error).message);
@@ -451,6 +483,23 @@ document.body.append(fileInput);
 
 // live toggle for the tracking overlay (applies immediately + on next start)
 showPoints.onchange = () => { if (compositor) compositor.showLandmarks = showPoints.checked; };
+
+// screen FX dropdown (persisted; applies live + on next start)
+const SCREENFX_KEY = 'cammods.screenfx';
+const storedFx = localStorage.getItem(SCREENFX_KEY);
+let currentScreenFilter: ScreenFilter =
+  SCREEN_FILTERS.some(f => f.id === storedFx) ? (storedFx as ScreenFilter) : 'none';
+for (const f of SCREEN_FILTERS) {
+  const opt = document.createElement('option');
+  opt.value = f.id; opt.textContent = f.label;
+  screenFxSelect.append(opt);
+}
+screenFxSelect.value = currentScreenFilter;
+screenFxSelect.onchange = () => {
+  currentScreenFilter = screenFxSelect.value as ScreenFilter;
+  localStorage.setItem(SCREENFX_KEY, currentScreenFilter);
+  if (compositor) compositor.screenFilter = currentScreenFilter;
+};
 
 // ---- boot ----
 hintEl.textContent = 'Pick a distinct activation pose per effect. Pipe into Zoom/Meet via OBS Virtual Camera.';

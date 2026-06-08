@@ -67,10 +67,15 @@ sensitivity slider and a **✕** (clear) appear for custom gestures.
 Make an effect's pose and it fires; its card glows in the effect's color.
 - **Lightning** and **Draw** are *held* — they run while you hold the pose.
 - **Blast** is *one-shot* — fires once per pose.
+- **🔫 Finger Gun** is *automatic* (on by default) — make a finger gun (index out,
+  thumb up) and **drop your thumb** to fire: muzzle flash + bang sound.
 - **🌙 Dim** is *automatic & gradual* — make a **fist** to fade the room down over
-  ~1.5s, **open your hand** to fade it back up. Untick **Enabled** to switch it off.
-- **🔥 Fire Breath** is **off by default** (it's heavy and rough). Tick **Enabled**
-  on its card to try it: open your mouth wide to breathe fire (loads a face model).
+  ~1.5s, **open your hand** to fade it back up.
+- **👁️ Lightning Eyes** and **🔥 Fire Breath** are **off by default** (they use face
+  tracking, which is heavier). Tick **Enabled** to try them — lightning crackles
+  from your eyes / open your mouth wide to breathe fire.
+- **📺 Screen FX** (top of panel): apply a full-frame **Glitch** or **CRT / retro**
+  filter over everything.
 - **🧽 Clear lines** (on the Draw card) wipes everything you've drawn.
 
 Only **one gesture effect fires at a time** — if a pose happens to match two
@@ -141,7 +146,10 @@ Webcam → HandTracker (MediaPipe) → GestureEngine → EffectDriver → Effect
 | `src/camera.ts` | Webcam capture |
 | `src/handTracker.ts` | MediaPipe Hand Landmarker wrapper (21 points/hand) |
 | `src/faceTracker.ts` | MediaPipe Face Landmarker wrapper (478 points/face) |
-| `src/facePose.ts` | Mouth openness / center / breath direction (used by Fire) |
+| `src/facePose.ts` | Mouth openness/center/breath direction + eye centers (Fire, Lightning Eyes) |
+| `src/effects/lightningEyes.ts` | Electric arcs from the eyes (face) |
+| `src/effects/gunShot.ts` | Finger-gun fire: muzzle flash + sparks + WebAudio bang |
+| `src/screenFilters.ts` | Full-frame Glitch / CRT post-process (canvas-native) |
 | `src/overlay.ts` | Hand-skeleton debug overlay |
 | `src/gesture/normalize.ts` | Translation/scale-invariant landmark normalization |
 | `src/gesture/distance.ts` | Pose similarity scoring |
