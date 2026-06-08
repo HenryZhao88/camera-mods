@@ -23,7 +23,7 @@ const labels: Record<string, string> = {
   'fingertip-lightning': 'Lightning', 'dim-lights': 'Dim', 'palm-blast': 'Blast', 'pinch-draw': 'Draw',
 };
 
-let engine = new GestureEngine(loadTemplates(), { defaultThreshold: 0.6, cooldownMs: 800 });
+const engine = new GestureEngine(loadTemplates(), { defaultThreshold: 0.6, cooldownMs: 800 });
 let compositor: Compositor | null = null;
 
 function setStatus(text: string) { status.textContent = text; }
@@ -60,11 +60,18 @@ async function startApp() {
 
 async function calibrateEffect(effectId: string) {
   if (!camera.width) { setStatus('Start the camera first'); return; }
-  for (let n = 3; n >= 1; n--) { setStatus(`Calibrating ${labels[effectId]} in ${n}…`); await countdown(1, () => {}); }
-  setStatus(`Hold your ${labels[effectId]} symbol…`);
-  await calibrate(effectId, camera, tracker);
-  engine.setTemplates(loadTemplates());
-  setStatus(`Saved ${labels[effectId]} gesture`);
+  compositor?.stop();
+  try {
+    for (let n = 3; n >= 1; n--) { setStatus(`Calibrating ${labels[effectId]} in ${n}…`); await countdown(1, () => {}); }
+    setStatus(`Hold your ${labels[effectId]} symbol…`);
+    await calibrate(effectId, camera, tracker);
+    engine.setTemplates(loadTemplates());
+    setStatus(`Saved ${labels[effectId]} gesture`);
+  } catch (err) {
+    setStatus((err as Error).message);
+  } finally {
+    compositor?.start();
+  }
 }
 
 function buildUI() {
@@ -96,9 +103,13 @@ function buildUI() {
   file.onchange = async () => {
     const f = file.files?.[0];
     if (!f) return;
-    importTemplates(await f.text());
-    engine.setTemplates(loadTemplates());
-    setStatus('Imported gestures');
+    try {
+      importTemplates(await f.text());
+      engine.setTemplates(loadTemplates());
+      setStatus('Imported gestures');
+    } catch (err) {
+      setStatus(`Import failed: ${(err as Error).message}`);
+    }
   };
   ui.appendChild(button('⬆ Import', () => file.click()));
   ui.appendChild(file);

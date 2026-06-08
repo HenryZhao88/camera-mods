@@ -63,11 +63,11 @@ export class Compositor {
     this.g.drawImage(this.camera.video, 0, 0, w, h);
     this.g.restore();
 
+    // Effects always update (a oneshot effect bootstraps its active state inside
+    // update() on the frame it was triggered); only rendering is gated by isActive().
     for (const e of this.effects) {
-      if (e.isActive()) {
-        e.update(dt, ctx);
-        e.render(this.g, ctx);
-      }
+      e.update(dt, ctx);
+      if (e.isActive()) e.render(this.g, ctx);
     }
   }
 }

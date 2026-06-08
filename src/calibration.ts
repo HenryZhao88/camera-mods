@@ -15,7 +15,12 @@ export async function calibrate(
   const frames: HandLandmarks[] = [];
   let handedness: Handedness = 'Right';
 
+  const MAX_ATTEMPTS = 180; // ~3s at 60fps
+  let attempts = 0;
   while (frames.length < CAPTURE_FRAMES) {
+    if (attempts++ >= MAX_ATTEMPTS) {
+      throw new Error('No hand detected — try again');
+    }
     await new Promise(r => requestAnimationFrame(r));
     const hands = tracker.detect(camera.video, performance.now());
     if (hands[0]) {
