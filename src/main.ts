@@ -294,7 +294,8 @@ async function start() {
           const lit =
             active.has(id) ||
             (flashUntil.get(id) ?? 0) > now ||
-            (id === 'dim-lights' && dim.isActive());
+            (id === 'dim-lights' && dim.isActive()) ||
+            (id === 'fire-breath' && fire.isActive());
           el.classList.toggle('active', lit);
         }
         setState(hand ? 'hand detected' : 'show your hand');
@@ -306,6 +307,11 @@ async function start() {
     idle.classList.add('hidden');
     liveDot.classList.add('live');
     renderGlobals();
+
+    // fire breathing is on by default — load the face model in the background
+    if (fire.enabled) {
+      ensureFace().then(ok => { if (compositor) compositor.trackFace = ok; });
+    }
     setState('live');
   } catch (err) {
     setState((err as Error).message);
