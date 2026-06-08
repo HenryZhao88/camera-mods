@@ -195,6 +195,29 @@
         box-shadow: 0 0 0 1px var(--c), 0 0 22px -4px var(--c);
         transform: translateY(-1px);
       }
+      .card.off { opacity: 0.5; }
+
+      /* on/off switch */
+      .switch { position: relative; display: inline-flex; width: 36px; height: 20px; flex: none; cursor: pointer; }
+      .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+      .switch .track {
+        position: absolute; inset: 0;
+        background: #262a34; border: 1px solid var(--line);
+        border-radius: 999px; transition: background 0.18s, border-color 0.18s;
+      }
+      .switch .track::before {
+        content: ''; position: absolute; left: 2px; top: 2px;
+        width: 14px; height: 14px; border-radius: 50%;
+        background: var(--muted); transition: transform 0.18s, background 0.18s;
+      }
+      .switch input:checked + .track {
+        background: color-mix(in srgb, var(--c) 30%, #262a34);
+        border-color: color-mix(in srgb, var(--c) 55%, var(--line));
+      }
+      .switch input:checked + .track::before {
+        transform: translateX(16px);
+        background: var(--c);
+      }
       .card .top {
         display: flex;
         align-items: center;

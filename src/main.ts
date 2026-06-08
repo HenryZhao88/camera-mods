@@ -5,6 +5,7 @@ import { GestureEngine, type GestureBinding } from './gesture/gestureEngine';
 import { presetBinding, customBinding } from './gesture/bindings';
 import { GESTURE_PRESETS, GESTURE_IDS, type GestureId } from './gesture/handGestures';
 import { saveChoice, getChoice, type GestureChoice } from './gesture/bindingStore';
+import { isEnabled, setEnabled } from './gesture/enabledStore';
 import {
   loadTemplates, removeTemplate, clearTemplates, exportTemplates, importTemplates,
 } from './gesture/templateStore';
@@ -38,8 +39,12 @@ const dim = new DimLights();
 const lightning = new FingertipLightning();
 const blast = new PalmBlast();
 const fire = new FireBreath();
-fire.enabled = false; // off by default — face tracking is heavy and the effect is rough
 let faceReady = false;
+
+// effects default on, except fire (heavy + rough)
+function effectDefaultEnabled(id: string): boolean { return id !== 'fire-breath'; }
+dim.enabled = isEnabled('dim-lights', true);
+fire.enabled = isEnabled('fire-breath', false);
 
 // Render order (back to front): dim darkens first, glowing effects layer on top.
 const effects: Effect[] = [dim, lightning, blast, fire, pinch];
@@ -79,13 +84,11 @@ const CARDS: CardDef[] = [
     id: 'dim-lights', icon: '🌙', name: 'Dim', color: '#8aa0ff',
     desc: 'Automatic — close into a <b>fist</b> to slowly dim the room, open your <b>hand</b> to fade it back up.',
     bindable: false,
-    extra: dimToggle,
   },
   {
     id: 'fire-breath', icon: '🔥', name: 'Fire Breath', color: '#ff7a18',
-    desc: 'Automatic — <b>open your mouth wide</b> and breathe fire. Uses face tracking (slower). Off by default.',
+    desc: 'Automatic — <b>open your mouth wide</b> and breathe fire. Uses face tracking (slower).',
     bindable: false,
-    extra: fireToggle,
   },
 ];
 
@@ -114,35 +117,40 @@ function button(text: string, onClick: () => void): HTMLButtonElement {
   return b;
 }
 
-function dimToggle(): HTMLElement {
+// A small on/off switch for an effect card.
+function enableSwitch(def: CardDef): HTMLElement {
+  const on = isEnabled(def.id, effectDefaultEnabled(def.id));
   const label = document.createElement('label');
-  label.className = 'toggle';
+  label.className = 'switch';
+  label.title = on ? 'Effect on' : 'Effect off';
   const input = document.createElement('input');
   input.type = 'checkbox';
-  input.checked = dim.enabled;
-  input.onchange = () => { dim.enabled = input.checked; };
-  label.append(input, document.createTextNode('Enabled'));
+  input.checked = on;
+  const track = document.createElement('span');
+  track.className = 'track';
+  input.onchange = () => setEffectEnabled(def.id, input.checked);
+  label.append(input, track);
   return label;
 }
 
-function fireToggle(): HTMLElement {
-  const label = document.createElement('label');
-  label.className = 'toggle';
-  const input = document.createElement('input');
-  input.type = 'checkbox';
-  input.checked = fire.enabled;
-  input.onchange = async () => {
-    fire.enabled = input.checked;
-    if (input.checked && running) {
+async function setEffectEnabled(effectId: string, on: boolean) {
+  setEnabled(effectId, on);
+  if (effectId === 'dim-lights') {
+    dim.enabled = on;
+  } else if (effectId === 'fire-breath') {
+    fire.enabled = on;
+    if (on && running) {
       const ok = await ensureFace();
-      if (compositor) compositor.trackFace = ok && input.checked;
-      if (!ok) { fire.enabled = false; input.checked = false; }
-    } else if (!input.checked && compositor) {
+      if (compositor) compositor.trackFace = ok && fire.enabled;
+      if (!ok) { fire.enabled = false; setEnabled('fire-breath', false); }
+    } else if (compositor) {
       compositor.trackFace = false;
     }
-  };
-  label.append(input, document.createTextNode('Enabled'));
-  return label;
+  } else {
+    if (!on) effects.find(e => e.id === effectId)?.reset?.(); // clear lingering output
+    rebuildBindings(); // bindable effect: include/exclude its binding
+  }
+  renderCards();
 }
 
 // Lazily load the face model the first time fire is needed.
@@ -164,6 +172,7 @@ async function ensureFace(): Promise<boolean> {
 function rebuildBindings() {
   const bindings: GestureBinding[] = [];
   for (const def of BINDABLE) {
+    if (!isEnabled(def.id, true)) continue; // disabled effects don't match
     const choice = choiceFor(def);
     if (choice === 'custom') {
       const t = loadTemplates().find(x => x.effectId === def.id);
@@ -191,8 +200,9 @@ function renderCards() {
   cardEls.clear();
 
   for (const def of CARDS) {
+    const on = isEnabled(def.id, effectDefaultEnabled(def.id));
     const card = document.createElement('div');
-    card.className = 'card';
+    card.className = on ? 'card' : 'card off';
     card.style.setProperty('--c', def.color);
     cardEls.set(def.id, card);
 
@@ -203,7 +213,7 @@ function renderCards() {
     const badge = document.createElement('span'); badge.className = 'badge';
     if (!def.bindable) { badge.classList.add('auto'); badge.textContent = 'auto'; }
     else { badge.classList.add('set'); badge.textContent = activationBadge(def); }
-    top.append(icon, name, badge);
+    top.append(icon, name, badge, enableSwitch(def));
 
     const desc = document.createElement('div');
     desc.className = 'desc';
