@@ -12,7 +12,7 @@ function playBang(): void {
   if (!AC) return;
   if (!audioCtx) audioCtx = new AC();
   const ctx = audioCtx;
-  if (ctx.state === 'suspended') ctx.resume();
+  if (ctx.state === 'suspended') void ctx.resume();
   const now = ctx.currentTime;
 
   // noise burst (the "crack")

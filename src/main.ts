@@ -486,7 +486,9 @@ showPoints.onchange = () => { if (compositor) compositor.showLandmarks = showPoi
 
 // screen FX dropdown (persisted; applies live + on next start)
 const SCREENFX_KEY = 'cammods.screenfx';
-let currentScreenFilter = (localStorage.getItem(SCREENFX_KEY) as ScreenFilter) || 'none';
+const storedFx = localStorage.getItem(SCREENFX_KEY);
+let currentScreenFilter: ScreenFilter =
+  SCREEN_FILTERS.some(f => f.id === storedFx) ? (storedFx as ScreenFilter) : 'none';
 for (const f of SCREEN_FILTERS) {
   const opt = document.createElement('option');
   opt.value = f.id; opt.textContent = f.label;
