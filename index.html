@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CamMods</title>
+    <style>
+      body { margin: 0; background: #111; color: #eee; font-family: system-ui, sans-serif; }
+      #stage { position: relative; width: 960px; max-width: 100%; margin: 0 auto; }
+      #view { width: 100%; display: block; background: #000; border-radius: 8px; }
+      #ui { padding: 12px; max-width: 960px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+      button { background: #2a2a2a; color: #eee; border: 1px solid #444; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+      button:hover { background: #3a3a3a; }
+      #status { font-size: 13px; opacity: 0.8; margin-left: auto; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"><canvas id="view"></canvas></div>
+    <div id="ui"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
