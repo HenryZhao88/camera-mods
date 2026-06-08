@@ -75,6 +75,12 @@ const CARDS: CardDef[] = [
     calibratable: false,
     extra: dimToggle,
   },
+  {
+    id: 'fire-breath', icon: '🔥', name: 'Fire Breath', color: '#ff7a18',
+    desc: 'Automatic — <b>open your mouth wide</b> and breathe a stream of fire in the direction you face. Uses face tracking.',
+    calibratable: false,
+    extra: fireToggle,
+  },
 ];
 
 const cardEls = new Map<string, HTMLDivElement>();
