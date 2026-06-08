@@ -4,6 +4,7 @@ import type { FaceTracker } from './faceTracker';
 import type { GestureEngine } from './gesture/gestureEngine';
 import { EffectDriver } from './effects/effectDriver';
 import { drawHandSkeleton } from './overlay';
+import { applyGlitch, applyCrt, type ScreenFilter } from './screenFilters';
 import type { Effect, FaceResult, HandResult, RenderContext } from './types';
 
 export interface CompositorHooks {
@@ -15,8 +16,10 @@ export interface CompositorHooks {
 }
 
 export class Compositor {
-  showLandmarks = false; // overlay the tracked hand skeleton when true
-  trackFace = false;     // run face detection (only when a face effect needs it)
+  showLandmarks = false;          // overlay the tracked hand skeleton when true
+  trackFace = false;              // run face detection (only when a face effect needs it)
+  screenFilter: ScreenFilter = 'none'; // full-frame post-process
+  private glitchBuffer?: HTMLCanvasElement;
   private g: CanvasRenderingContext2D;
   private driver: EffectDriver;
   private raf = 0;
@@ -87,6 +90,13 @@ export class Compositor {
 
     if (this.showLandmarks && hand) {
       drawHandSkeleton(this.g, hand.landmarks, w, h);
+    }
+
+    if (this.screenFilter === 'glitch') {
+      this.glitchBuffer ??= document.createElement('canvas');
+      applyGlitch(this.g, this.glitchBuffer);
+    } else if (this.screenFilter === 'crt') {
+      applyCrt(this.g);
     }
   }
 }
