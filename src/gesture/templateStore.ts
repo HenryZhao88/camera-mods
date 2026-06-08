@@ -19,6 +19,11 @@ export function saveTemplate(t: GestureTemplate): void {
   localStorage.setItem(KEY, JSON.stringify(all));
 }
 
+export function removeTemplate(effectId: string): void {
+  const all = loadTemplates().filter(x => x.effectId !== effectId);
+  localStorage.setItem(KEY, JSON.stringify(all));
+}
+
 export function clearTemplates(): void {
   localStorage.removeItem(KEY);
 }

@@ -5,7 +5,12 @@ import { EffectDriver } from './effects/effectDriver';
 import type { Effect, HandResult, RenderContext } from './types';
 
 export interface CompositorHooks {
-  onFrame?: (hand: HandResult | null, scores: Record<string, number>, fired: string[]) => void;
+  onFrame?: (
+    hand: HandResult | null,
+    scores: Record<string, number>,
+    fired: string[],
+    active: Set<string>,
+  ) => void;
 }
 
 export class Compositor {
@@ -54,7 +59,7 @@ export class Compositor {
 
     const result = this.engine.update(hand ? hand.landmarks : null, now);
     this.driver.apply(result.fired, result.active);
-    this.hooks.onFrame?.(hand, result.scores, result.fired);
+    this.hooks.onFrame?.(hand, result.scores, result.fired, result.active);
 
     // mirrored selfie-view video
     this.g.save();

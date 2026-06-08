@@ -35,42 +35,52 @@ To stop the app later, press `Ctrl+C` in the terminal.
 
 ## 3. How to use it
 
+The interface is a **control deck**: the camera fills the left, and a panel on the
+right has one **card per effect** (status, calibrate, clear, and its own
+sensitivity), with global controls along the bottom.
+
 ### Step 1 — Start the camera
-Click **▶ Start**. You should see yourself (mirrored, like a selfie) on screen.
-The status text on the right shows whether a hand is detected.
+Click **▶ Start** (bottom of the panel). You'll see yourself (mirrored, like a
+selfie). The live dot turns green, and the status line shows hand detection + FPS.
+Click **■ Stop** any time to release the camera.
 
 ### Step 2 — Calibrate your gestures
-Each effect has a **🎯 button**. Calibration teaches the app *your* hand symbol
-for that effect:
+Three effects use a hand symbol *you* choose. On that effect's card click
+**🎯 Calibrate** (or **↻ Recalibrate** if already set):
 
-1. Click a 🎯 button (e.g. **🎯 Lightning**).
-2. A 3-2-1 countdown starts. Get your hand ready.
-3. When it says **"Hold your … symbol…"**, hold your chosen pose steady for a
-   second. It captures and averages your hand, then saves it.
-4. Status shows **"Saved … gesture"**. Done.
+1. A 3-2-1 countdown starts. Get your hand ready.
+2. When it says **"hold your symbol…"**, hold your chosen pose steady for a second.
+   It captures and averages your hand, then saves it. The card badge flips to
+   **set ✓**.
 
-Pick a *distinct* pose for each effect so they don't get confused — e.g.:
+Pick a *distinct* pose for each so they don't collide — e.g.:
 
 | Effect | Suggested symbol | What it does |
 |--------|------------------|--------------|
-| 🎯 **Lightning** | Open hand, fingers spread | Sparks/fire stream from your fingertips while you hold it |
-| 🎯 **Dim** | Closed fist | Toggles a dramatic dark vignette on/off |
-| 🎯 **Blast** | Open palm pushed toward camera | One-shot shockwave + flash |
-| 🎯 **Draw** | Pinch (thumb + index together) | Draws glowing neon lines that follow your finger |
+| ⚡ **Lightning** | Two fingers up (peace sign) | Sparks stream from your fingertips while held |
+| 💥 **Blast** | Open palm pushed toward camera | One-shot shockwave + flash |
+| ✏️ **Draw** | Pinch (thumb + index together) | Draws glowing neon lines that follow your finger |
+| 🌙 **Dim** | *Automatic — no calibration* | **Close your hand into a fist** to slowly dim the room; **open it** to fade back up |
 
 Your calibration is **saved in the browser** and survives restarts.
 
-### Step 3 — Play!
-Just make a saved symbol and the effect fires. Notes:
-- **Lightning** and **Draw** are *held* — the effect runs while you hold the pose.
-- **Dim** is a *toggle* — make the symbol once to dim, again to undo.
-- **Blast** is *one-shot* — fires once per gesture.
-- **🧽 Clear drawing** wipes everything you've drawn.
+> **Heads-up:** the 🌙 **Dim** effect watches for an open hand vs. a fist
+> automatically, so **don't calibrate another effect as a fist** — pick something
+> else (peace sign, pinch, etc.) so they don't fight.
 
-### Step 4 — Tune sensitivity
-The **slider** controls how closely your live pose must match the saved one.
-- Effects firing by accident? → drag **left** (stricter).
-- Effects not firing? → drag **right** (looser).
+### Step 3 — Play!
+Make a saved symbol and the effect fires; its card glows in the effect's color.
+- **Lightning** and **Draw** are *held* — they run while you hold the pose.
+- **Blast** is *one-shot* — fires once per gesture.
+- **Dim** is *automatic & gradual* — fist fades the room down over ~1.5s, opening
+  your hand fades it back up. Untick **Enabled** on the Dim card to switch it off.
+- **🧽 Clear lines** (on the Draw card) wipes everything you've drawn.
+
+### Step 4 — Customize each effect
+- **Per-effect sensitivity slider** (strict ↔ loose): firing by accident? drag
+  toward **strict**. Not firing? drag toward **loose**.
+- **✕** on a card clears just that one gesture so you can re-record it.
+- **🗑 Clear all** wipes every saved gesture at once.
 
 ### Step 5 — Back up / move your gestures
 - **⬇ Export** saves your calibration to a `cammods-gestures.json` file.
@@ -103,8 +113,9 @@ Now your gesture effects show up in the call. 🎉
 | "Camera access failed" | Click the camera icon in Chrome's address bar → Allow. Make sure no other app is using the webcam. |
 | "Loading hand model…" stuck | The hand model downloads from the internet on first run — check your connection and refresh. |
 | "No hand detected — try again" during calibration | Make sure your hand is well-lit and fully in frame, then click 🎯 again. |
-| Effect won't trigger | Re-calibrate that gesture, or nudge the sensitivity slider right. |
-| Two effects fire at once | Their symbols are too similar — re-calibrate one with a more distinct pose. |
+| Effect won't trigger | Re-calibrate that gesture, or nudge its sensitivity slider toward **loose**. |
+| Two effects fire at once | Their symbols are too similar — clear (✕) one and re-record a more distinct pose. |
+| Lights dim when I don't want them to | You made a fist — open your hand to fade back up, or untick **Enabled** on the Dim card. |
 
 ---
 
@@ -131,13 +142,15 @@ Webcam → HandTracker (MediaPipe) → GestureEngine → EffectDriver → Effect
 | `src/gesture/normalize.ts` | Translation/scale-invariant landmark normalization |
 | `src/gesture/distance.ts` | Pose similarity scoring |
 | `src/gesture/gestureEngine.ts` | Template matching + threshold + cooldown |
-| `src/gesture/templateStore.ts` | localStorage persistence + export/import |
+| `src/gesture/handPose.ts` | Built-in open-hand / fist detection (used by Dim) |
+| `src/gesture/templateStore.ts` | localStorage persistence + per-gesture/all clear + export/import |
 | `src/calibration.ts` | Averaged gesture capture |
 | `src/effects/effectDriver.ts` | Maps gesture events → effect lifecycle (hold/toggle/oneshot) |
 | `src/effects/particleSystem.ts` | Shared particle utility |
-| `src/effects/*.ts` | The four effects |
+| `src/effects/dimLights.ts` | Self-driven gradual dim from hand openness (not calibrated) |
+| `src/effects/*.ts` | The other three effects |
 | `src/compositor.ts` | Render loop: draws video + runs effects |
-| `src/main.ts` | UI + wiring |
+| `src/main.ts` | Control-deck UI + wiring |
 
 Pure logic is unit-tested (Vitest); camera/tracking/rendering are verified live.
 
