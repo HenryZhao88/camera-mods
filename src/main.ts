@@ -113,6 +113,41 @@ function dimToggle(): HTMLElement {
   return label;
 }
 
+function fireToggle(): HTMLElement {
+  const label = document.createElement('label');
+  label.className = 'toggle';
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.checked = fire.enabled;
+  input.onchange = async () => {
+    fire.enabled = input.checked;
+    if (input.checked && running) {
+      const ok = await ensureFace();
+      if (compositor) compositor.trackFace = ok;
+      if (!ok) { fire.enabled = false; input.checked = false; }
+    } else if (!input.checked && compositor) {
+      compositor.trackFace = false;
+    }
+  };
+  label.append(input, document.createTextNode('Enabled'));
+  return label;
+}
+
+// Lazily load the face model the first time fire is needed.
+async function ensureFace(): Promise<boolean> {
+  if (faceReady) return true;
+  setState('loading face model…');
+  try {
+    await faceTracker.init();
+    faceReady = true;
+    setState('live');
+    return true;
+  } catch {
+    setState('face model failed to load');
+    return false;
+  }
+}
+
 // ---- card rendering ----
 function renderCards() {
   cardsEl.innerHTML = '';
@@ -244,7 +279,7 @@ async function start() {
     await camera.start();
     setState('loading hand model…');
     await tracker.init();
-    compositor = new Compositor(canvas, camera, tracker, engine, effects, {
+    compositor = new Compositor(canvas, camera, tracker, faceTracker, engine, effects, {
       onFrame: (hand, _scores, fired, active) => {
         const now = performance.now();
         if (lastFrameTime) {
