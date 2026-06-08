@@ -171,7 +171,9 @@ function rebuildBindings() {
         bindings.push(customBinding(def.id, t.landmarks, () => sensitivity.get(def.id) ?? DEFAULT_THRESHOLD));
       }
     } else {
-      bindings.push(presetBinding(def.id, choice));
+      // guard against a tampered/unknown stored pose falling through to a crash
+      const preset = GESTURE_PRESETS[choice] ? choice : (def.defaultGesture ?? 'open');
+      bindings.push(presetBinding(def.id, preset));
     }
   }
   engine.setBindings(bindings);
