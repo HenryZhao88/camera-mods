@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  saveTemplate, loadTemplates, clearTemplates, exportTemplates, importTemplates,
+  saveTemplate, loadTemplates, clearTemplates, removeTemplate, exportTemplates, importTemplates,
 } from '../src/gesture/templateStore';
 import type { GestureTemplate } from '../src/types';
 
@@ -35,6 +35,19 @@ describe('templateStore', () => {
     expect(loadTemplates()).toHaveLength(0);
     importTemplates(json);
     expect(loadTemplates().map(t => t.effectId).sort()).toEqual(['a', 'b']);
+  });
+
+  it('removes a single template by effectId, leaving others', () => {
+    saveTemplate(mk('a'));
+    saveTemplate(mk('b'));
+    removeTemplate('a');
+    expect(loadTemplates().map(t => t.effectId)).toEqual(['b']);
+  });
+
+  it('removeTemplate is a no-op when the effectId is absent', () => {
+    saveTemplate(mk('a'));
+    removeTemplate('zzz');
+    expect(loadTemplates().map(t => t.effectId)).toEqual(['a']);
   });
 
   it('returns [] when storage is empty', () => {
