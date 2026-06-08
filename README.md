@@ -77,6 +77,8 @@ Only **one gesture effect fires at a time** — if a pose happens to match two
 effects, the higher one in the list wins, so effects don't stack.
 
 ### Step 4 — Other controls
+- **On/off switch** (top-right of each card): toggle any effect on or off. Disabled
+  effects grey out, stop firing, and clear their on-screen output. Choices persist.
 - **🧹 Clear screen** instantly wipes everything currently drawn (lines, particles,
   dim, fire).
 - **Show tracking points** (top of the panel): overlays the 21-point hand skeleton
