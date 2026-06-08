@@ -81,6 +81,8 @@ Make a saved symbol and the effect fires; its card glows in the effect's color.
   toward **strict**. Not firing? drag toward **loose**.
 - **✕** on a card clears just that one gesture so you can re-record it.
 - **🗑 Clear all** wipes every saved gesture at once.
+- **Show tracking points** (top of the panel): overlays the 21-point hand
+  skeleton on the video so you can see exactly what's being tracked.
 
 ### Step 5 — Back up / move your gestures
 - **⬇ Export** saves your calibration to a `cammods-gestures.json` file.
@@ -116,6 +118,7 @@ Now your gesture effects show up in the call. 🎉
 | Effect won't trigger | Re-calibrate that gesture, or nudge its sensitivity slider toward **loose**. |
 | Two effects fire at once | Their symbols are too similar — clear (✕) one and re-record a more distinct pose. |
 | Lights dim when I don't want them to | You made a fist — open your hand to fade back up, or untick **Enabled** on the Dim card. |
+| It seems to track non-hand objects | Detection confidence is tuned to ignore faces/background, but in busy scenes turn on **Show tracking points** to confirm, and keep your hand the clearest hand-shape in frame. |
 
 ---
 

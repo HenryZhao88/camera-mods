@@ -15,6 +15,11 @@ export class HandTracker {
       baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
       runningMode: 'VIDEO',
       numHands: 1,
+      // Higher confidence so it only locks onto an actual hand, not faces,
+      // background clutter, or other hand-ish shapes.
+      minHandDetectionConfidence: 0.7,
+      minHandPresenceConfidence: 0.7,
+      minTrackingConfidence: 0.6,
     });
   }
 
