@@ -277,6 +277,8 @@ function renderCards() {
       row.append(def.extra());
       card.append(row);
     }
+
+    cardsEl.append(card);
   }
 }
 
