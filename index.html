@@ -157,6 +157,8 @@
         70% { box-shadow: 0 0 0 7px rgba(65,224,163,0); }
         100% { box-shadow: 0 0 0 0 rgba(65,224,163,0); }
       }
+      .statusbar #hand { color: var(--fg); }
+      .statusbar #state { color: var(--muted); padding-left: 6px; border-left: 1px solid var(--line); }
       .statusbar .fps { margin-left: auto; color: var(--fg); }
 
       .tools {
@@ -342,6 +344,7 @@
         </div>
         <div class="statusbar" id="statusbar">
           <span class="dot" id="livedot"></span>
+          <span id="hand">—</span>
           <span id="state">idle</span>
           <span id="fps" class="fps"></span>
         </div>

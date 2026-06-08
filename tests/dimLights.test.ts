@@ -16,7 +16,7 @@ function hand(kind: 'open' | 'fist'): HandResult {
 }
 
 function ctx(h: HandResult | null): RenderContext {
-  return { width: 100, height: 100, hand: h, now: 0 };
+  return { width: 100, height: 100, hand: h, face: null, now: 0 };
 }
 
 // Advance the effect by `seconds` worth of 60fps frames.

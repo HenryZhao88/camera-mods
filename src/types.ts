@@ -17,10 +17,15 @@ export interface GestureTemplate {
   createdAt: string;
 }
 
+export interface FaceResult {
+  landmarks: Landmark[]; // 478 FaceMesh points, 0..1, already mirrored for display
+}
+
 export interface RenderContext {
   width: number;
   height: number;
   hand: HandResult | null; // primary hand this frame
+  face: FaceResult | null; // primary face this frame (null unless face tracking on)
   now: number;             // ms
 }
 

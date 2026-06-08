@@ -1,5 +1,6 @@
 import { Camera } from './camera';
 import { HandTracker } from './handTracker';
+import { FaceTracker } from './faceTracker';
 import { GestureEngine } from './gesture/gestureEngine';
 import {
   loadTemplates, removeTemplate, clearTemplates, exportTemplates, importTemplates,
@@ -10,6 +11,7 @@ import { FingertipLightning } from './effects/fingertipLightning';
 import { DimLights } from './effects/dimLights';
 import { PalmBlast } from './effects/palmBlast';
 import { PinchDraw } from './effects/pinchDraw';
+import { FireBreath } from './effects/fireBreath';
 import type { Effect } from './types';
 
 // ---- elements ----
@@ -19,6 +21,7 @@ const cardsEl = document.getElementById('cards') as HTMLDivElement;
 const globalsEl = document.getElementById('globals') as HTMLDivElement;
 const hintEl = document.getElementById('hint') as HTMLDivElement;
 const liveDot = document.getElementById('livedot') as HTMLSpanElement;
+const handEl = document.getElementById('hand') as HTMLSpanElement;
 const stateEl = document.getElementById('state') as HTMLSpanElement;
 const fpsEl = document.getElementById('fps') as HTMLSpanElement;
 const showPoints = document.getElementById('showpoints') as HTMLInputElement;
@@ -26,13 +29,16 @@ const showPoints = document.getElementById('showpoints') as HTMLInputElement;
 // ---- engine + effects ----
 const camera = new Camera();
 const tracker = new HandTracker();
+const faceTracker = new FaceTracker();
 const pinch = new PinchDraw();
 const dim = new DimLights();
 const lightning = new FingertipLightning();
 const blast = new PalmBlast();
+const fire = new FireBreath();
+let faceReady = false;
 
 // Render order (back to front): dim darkens first, glowing effects layer on top.
-const effects: Effect[] = [dim, lightning, blast, pinch];
+const effects: Effect[] = [dim, lightning, blast, fire, pinch];
 const engine = new GestureEngine(loadTemplates(), { defaultThreshold: 0.6, cooldownMs: 800 });
 let compositor: Compositor | null = null;
 let running = false;
@@ -70,6 +76,12 @@ const CARDS: CardDef[] = [
     calibratable: false,
     extra: dimToggle,
   },
+  {
+    id: 'fire-breath', icon: '🔥', name: 'Fire Breath', color: '#ff7a18',
+    desc: 'Automatic — <b>open your mouth wide</b> and breathe a stream of fire in the direction you face. Uses face tracking.',
+    calibratable: false,
+    extra: fireToggle,
+  },
 ];
 
 const cardEls = new Map<string, HTMLDivElement>();
@@ -100,6 +112,42 @@ function dimToggle(): HTMLElement {
   input.onchange = () => { dim.enabled = input.checked; };
   label.append(input, document.createTextNode('Enabled'));
   return label;
+}
+
+function fireToggle(): HTMLElement {
+  const label = document.createElement('label');
+  label.className = 'toggle';
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.checked = fire.enabled;
+  input.onchange = async () => {
+    fire.enabled = input.checked;
+    if (input.checked && running) {
+      const ok = await ensureFace();
+      // honor the user's latest intent if they toggled off during the load
+      if (compositor) compositor.trackFace = ok && input.checked;
+      if (!ok) { fire.enabled = false; input.checked = false; }
+    } else if (!input.checked && compositor) {
+      compositor.trackFace = false;
+    }
+  };
+  label.append(input, document.createTextNode('Enabled'));
+  return label;
+}
+
+// Lazily load the face model the first time fire is needed.
+async function ensureFace(): Promise<boolean> {
+  if (faceReady) return true;
+  setState('loading face model…');
+  try {
+    await faceTracker.init();
+    faceReady = true;
+    setState('live');
+    return true;
+  } catch {
+    setState('face model failed to load');
+    return false;
+  }
 }
 
 // ---- card rendering ----
@@ -233,7 +281,7 @@ async function start() {
     await camera.start();
     setState('loading hand model…');
     await tracker.init();
-    compositor = new Compositor(canvas, camera, tracker, engine, effects, {
+    compositor = new Compositor(canvas, camera, tracker, faceTracker, engine, effects, {
       onFrame: (hand, _scores, fired, active) => {
         const now = performance.now();
         if (lastFrameTime) {
@@ -248,10 +296,11 @@ async function start() {
           const lit =
             active.has(id) ||
             (flashUntil.get(id) ?? 0) > now ||
-            (id === 'dim-lights' && dim.isActive());
+            (id === 'dim-lights' && dim.isActive()) ||
+            (id === 'fire-breath' && fire.isActive());
           el.classList.toggle('active', lit);
         }
-        setState(hand ? 'hand detected' : 'show your hand');
+        handEl.textContent = hand ? '✋ hand' : 'no hand';
       },
     });
     compositor.showLandmarks = showPoints.checked;
@@ -260,6 +309,11 @@ async function start() {
     idle.classList.add('hidden');
     liveDot.classList.add('live');
     renderGlobals();
+
+    // fire breathing is on by default — load the face model in the background
+    if (fire.enabled) {
+      ensureFace().then(ok => { if (compositor) compositor.trackFace = ok; });
+    }
     setState('live');
   } catch (err) {
     setState((err as Error).message);
@@ -268,11 +322,13 @@ async function start() {
 
 function stop() {
   compositor?.stop();
+  if (compositor) compositor.trackFace = false;
   camera.stop();
   running = false;
   liveDot.classList.remove('live');
   idle.classList.remove('hidden');
   fpsEl.textContent = '';
+  handEl.textContent = '—';
   for (const el of cardEls.values()) el.classList.remove('active');
   renderGlobals();
   setState('stopped');

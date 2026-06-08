@@ -61,6 +61,7 @@ Pick a *distinct* pose for each so they don't collide — e.g.:
 | 💥 **Blast** | Open palm pushed toward camera | One-shot shockwave + flash |
 | ✏️ **Draw** | Pinch (thumb + index together) | Draws glowing neon lines that follow your finger |
 | 🌙 **Dim** | *Automatic — no calibration* | **Close your hand into a fist** to slowly dim the room; **open it** to fade back up |
+| 🔥 **Fire Breath** | *Automatic — no calibration* | **Open your mouth wide** and breathe a stream of fire in the direction you face |
 
 Your calibration is **saved in the browser** and survives restarts.
 
@@ -74,6 +75,10 @@ Make a saved symbol and the effect fires; its card glows in the effect's color.
 - **Blast** is *one-shot* — fires once per gesture.
 - **Dim** is *automatic & gradual* — fist fades the room down over ~1.5s, opening
   your hand fades it back up. Untick **Enabled** on the Dim card to switch it off.
+- **Fire Breath** is *automatic* — open your mouth wide and fire streams out,
+  following your head tilt; intensity scales with how wide you open. It uses face
+  tracking (a second model loads on first use). Untick **Enabled** to turn it off
+  if you'd rather not run face tracking.
 - **🧽 Clear lines** (on the Draw card) wipes everything you've drawn.
 
 ### Step 4 — Customize each effect
@@ -142,6 +147,9 @@ Webcam → HandTracker (MediaPipe) → GestureEngine → EffectDriver → Effect
 |--------|----------------|
 | `src/camera.ts` | Webcam capture |
 | `src/handTracker.ts` | MediaPipe Hand Landmarker wrapper (21 points/hand) |
+| `src/faceTracker.ts` | MediaPipe Face Landmarker wrapper (478 points/face) |
+| `src/facePose.ts` | Mouth openness / center / breath direction (used by Fire) |
+| `src/overlay.ts` | Hand-skeleton debug overlay |
 | `src/gesture/normalize.ts` | Translation/scale-invariant landmark normalization |
 | `src/gesture/distance.ts` | Pose similarity scoring |
 | `src/gesture/gestureEngine.ts` | Template matching + threshold + cooldown |
@@ -151,7 +159,8 @@ Webcam → HandTracker (MediaPipe) → GestureEngine → EffectDriver → Effect
 | `src/effects/effectDriver.ts` | Maps gesture events → effect lifecycle (hold/toggle/oneshot) |
 | `src/effects/particleSystem.ts` | Shared particle utility |
 | `src/effects/dimLights.ts` | Self-driven gradual dim from hand openness (not calibrated) |
-| `src/effects/*.ts` | The other three effects |
+| `src/effects/fireBreath.ts` | Mouth-driven fire particle stream (face tracking) |
+| `src/effects/*.ts` | The other effects |
 | `src/compositor.ts` | Render loop: draws video + runs effects |
 | `src/main.ts` | Control-deck UI + wiring |
 
