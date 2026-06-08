@@ -1,9 +1,10 @@
 import type { Camera } from './camera';
 import type { HandTracker } from './handTracker';
+import type { FaceTracker } from './faceTracker';
 import type { GestureEngine } from './gesture/gestureEngine';
 import { EffectDriver } from './effects/effectDriver';
 import { drawHandSkeleton } from './overlay';
-import type { Effect, HandResult, RenderContext } from './types';
+import type { Effect, FaceResult, HandResult, RenderContext } from './types';
 
 export interface CompositorHooks {
   onFrame?: (
@@ -16,6 +17,7 @@ export interface CompositorHooks {
 
 export class Compositor {
   showLandmarks = false; // overlay the tracked hand skeleton when true
+  trackFace = false;     // run face detection (only when a face effect needs it)
   private g: CanvasRenderingContext2D;
   private driver: EffectDriver;
   private raf = 0;
@@ -25,6 +27,7 @@ export class Compositor {
     private canvas: HTMLCanvasElement,
     private camera: Camera,
     private tracker: HandTracker,
+    private faceTracker: FaceTracker,
     private engine: GestureEngine,
     private effects: Effect[],
     private hooks: CompositorHooks = {},
@@ -57,7 +60,13 @@ export class Compositor {
 
     const hands = this.tracker.detect(this.camera.video, now);
     const hand = hands[0] ?? null;
-    const ctx: RenderContext = { width: w, height: h, hand, now };
+
+    let face: FaceResult | null = null;
+    if (this.trackFace && this.faceTracker.ready) {
+      face = this.faceTracker.detect(this.camera.video, now)[0] ?? null;
+    }
+
+    const ctx: RenderContext = { width: w, height: h, hand, face, now };
 
     const result = this.engine.update(hand ? hand.landmarks : null, now);
     this.driver.apply(result.fired, result.active);

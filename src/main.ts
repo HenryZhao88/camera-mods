@@ -1,5 +1,6 @@
 import { Camera } from './camera';
 import { HandTracker } from './handTracker';
+import { FaceTracker } from './faceTracker';
 import { GestureEngine } from './gesture/gestureEngine';
 import {
   loadTemplates, removeTemplate, clearTemplates, exportTemplates, importTemplates,
@@ -10,6 +11,7 @@ import { FingertipLightning } from './effects/fingertipLightning';
 import { DimLights } from './effects/dimLights';
 import { PalmBlast } from './effects/palmBlast';
 import { PinchDraw } from './effects/pinchDraw';
+import { FireBreath } from './effects/fireBreath';
 import type { Effect } from './types';
 
 // ---- elements ----
@@ -26,13 +28,16 @@ const showPoints = document.getElementById('showpoints') as HTMLInputElement;
 // ---- engine + effects ----
 const camera = new Camera();
 const tracker = new HandTracker();
+const faceTracker = new FaceTracker();
 const pinch = new PinchDraw();
 const dim = new DimLights();
 const lightning = new FingertipLightning();
 const blast = new PalmBlast();
+const fire = new FireBreath();
+let faceReady = false;
 
 // Render order (back to front): dim darkens first, glowing effects layer on top.
-const effects: Effect[] = [dim, lightning, blast, pinch];
+const effects: Effect[] = [dim, lightning, blast, fire, pinch];
 const engine = new GestureEngine(loadTemplates(), { defaultThreshold: 0.6, cooldownMs: 800 });
 let compositor: Compositor | null = null;
 let running = false;

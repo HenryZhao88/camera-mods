@@ -4,7 +4,7 @@ import type { RenderContext } from '../src/types';
 
 function ctx(): RenderContext {
   const landmarks = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5, z: 0 }));
-  return { width: 100, height: 100, hand: { landmarks, handedness: 'Right' }, now: 0 };
+  return { width: 100, height: 100, hand: { landmarks, handedness: 'Right' }, face: null, now: 0 };
 }
 
 describe('PalmBlast (oneshot lifecycle)', () => {
