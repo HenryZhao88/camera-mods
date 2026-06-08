@@ -8,19 +8,27 @@ const MODEL_URL =
 
 export class FaceTracker {
   private landmarker: FaceLandmarker | null = null;
+  private initPromise: Promise<void> | null = null;
 
   get ready(): boolean { return this.landmarker !== null; }
 
+  // Idempotent + concurrency-safe: overlapping callers share one in-flight load
+  // instead of creating duplicate FaceLandmarker instances.
   async init(): Promise<void> {
     if (this.landmarker) return;
-    const fileset = await FilesetResolver.forVisionTasks(WASM_BASE);
-    this.landmarker = await FaceLandmarker.createFromOptions(fileset, {
-      baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
-      runningMode: 'VIDEO',
-      numFaces: 1,
-      minFaceDetectionConfidence: 0.6,
-      minTrackingConfidence: 0.6,
-    });
+    if (!this.initPromise) {
+      this.initPromise = (async () => {
+        const fileset = await FilesetResolver.forVisionTasks(WASM_BASE);
+        this.landmarker = await FaceLandmarker.createFromOptions(fileset, {
+          baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
+          runningMode: 'VIDEO',
+          numFaces: 1,
+          minFaceDetectionConfidence: 0.6,
+          minTrackingConfidence: 0.6,
+        });
+      })();
+    }
+    return this.initPromise;
   }
 
   // Returns faces with x mirrored to match the mirrored selfie-view canvas.

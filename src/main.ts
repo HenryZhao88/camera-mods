@@ -124,7 +124,8 @@ function fireToggle(): HTMLElement {
     fire.enabled = input.checked;
     if (input.checked && running) {
       const ok = await ensureFace();
-      if (compositor) compositor.trackFace = ok;
+      // honor the user's latest intent if they toggled off during the load
+      if (compositor) compositor.trackFace = ok && input.checked;
       if (!ok) { fire.enabled = false; input.checked = false; }
     } else if (!input.checked && compositor) {
       compositor.trackFace = false;
@@ -321,6 +322,7 @@ async function start() {
 
 function stop() {
   compositor?.stop();
+  if (compositor) compositor.trackFace = false;
   camera.stop();
   running = false;
   liveDot.classList.remove('live');
