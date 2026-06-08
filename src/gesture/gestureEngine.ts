@@ -1,56 +1,47 @@
-import { normalizeLandmarks } from './normalize';
-import { landmarkDistance } from './distance';
-import type { GestureTemplate, HandLandmarks } from '../types';
+import type { HandLandmarks } from '../types';
+
+// A binding ties an effect to a predicate over the live hand landmarks.
+// Presets and custom-recorded gestures both reduce to a `test` function.
+export interface GestureBinding {
+  effectId: string;
+  test: (landmarks: HandLandmarks) => boolean;
+}
 
 export interface GestureEngineResult {
-  fired: string[];
-  active: Set<string>;
-  scores: Record<string, number>;
+  fired: string[];        // effects whose gesture matched AND passed cooldown this frame
+  active: Set<string>;    // effects whose gesture currently matches
 }
 
 export interface GestureEngineOptions {
-  defaultThreshold?: number; // max distance counted as a match (default 0.6)
-  cooldownMs?: number;       // min ms between fires per effect (default 800)
+  cooldownMs?: number; // min ms between fires per effect (default 800)
 }
 
 export class GestureEngine {
-  private templates: GestureTemplate[];
-  private defaultThreshold: number;
+  private bindings: GestureBinding[];
   private cooldownMs: number;
-  private thresholds = new Map<string, number>();
   private lastFired = new Map<string, number>();
 
-  constructor(templates: GestureTemplate[], opts: GestureEngineOptions = {}) {
-    this.templates = templates;
-    this.defaultThreshold = opts.defaultThreshold ?? 0.6;
+  constructor(bindings: GestureBinding[] = [], opts: GestureEngineOptions = {}) {
+    this.bindings = bindings;
     this.cooldownMs = opts.cooldownMs ?? 800;
   }
 
-  setTemplates(t: GestureTemplate[]): void { this.templates = t; }
-  setThreshold(effectId: string, value: number): void { this.thresholds.set(effectId, value); }
-  private thresholdFor(id: string): number {
-    return this.thresholds.get(id) ?? this.defaultThreshold;
-  }
+  setBindings(bindings: GestureBinding[]): void { this.bindings = bindings; }
 
   update(live: HandLandmarks | null, now: number): GestureEngineResult {
     const fired: string[] = [];
     const active = new Set<string>();
-    const scores: Record<string, number> = {};
-    if (!live) return { fired, active, scores };
+    if (!live) return { fired, active };
 
-    const norm = normalizeLandmarks(live);
-    for (const t of this.templates) {
-      const d = landmarkDistance(norm, t.landmarks);
-      scores[t.effectId] = d;
-      if (d <= this.thresholdFor(t.effectId)) {
-        active.add(t.effectId);
-        const last = this.lastFired.get(t.effectId) ?? -Infinity;
-        if (now - last >= this.cooldownMs) {
-          fired.push(t.effectId);
-          this.lastFired.set(t.effectId, now);
-        }
+    for (const b of this.bindings) {
+      if (!b.test(live)) continue;
+      active.add(b.effectId);
+      const last = this.lastFired.get(b.effectId) ?? -Infinity;
+      if (now - last >= this.cooldownMs) {
+        fired.push(b.effectId);
+        this.lastFired.set(b.effectId, now);
       }
     }
-    return { fired, active, scores };
+    return { fired, active };
   }
 }

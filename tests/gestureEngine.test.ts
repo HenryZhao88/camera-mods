@@ -1,43 +1,53 @@
 import { describe, it, expect } from 'vitest';
-import { GestureEngine } from '../src/gesture/gestureEngine';
-import { normalizeLandmarks } from '../src/gesture/normalize';
-import type { GestureTemplate, HandLandmarks } from '../src/types';
+import { GestureEngine, type GestureBinding } from '../src/gesture/gestureEngine';
+import type { HandLandmarks } from '../src/types';
 
-const poseA: HandLandmarks = Array.from({ length: 21 }, (_, i) => ({ x: i * 0.01, y: 0, z: 0 }));
-const poseB: HandLandmarks = Array.from({ length: 21 }, (_, i) => ({ x: 0, y: i * 0.01, z: 0 }));
+const anyHand: HandLandmarks = Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0 }));
 
-const template: GestureTemplate = {
-  effectId: 'fx', landmarks: normalizeLandmarks(poseA), handedness: 'Right', createdAt: 'now',
-};
+// A binding that matches whenever `flag.on` is true — lets us drive the engine
+// deterministically without real landmark geometry.
+function toggleBinding(effectId: string, flag: { on: boolean }): GestureBinding {
+  return { effectId, test: () => flag.on };
+}
 
 describe('GestureEngine', () => {
-  it('fires when a matching pose is seen', () => {
-    const e = new GestureEngine([template], { cooldownMs: 800, defaultThreshold: 0.6 });
-    const r = e.update(poseA, 0);
+  it('fires and marks active when a binding matches', () => {
+    const flag = { on: true };
+    const e = new GestureEngine([toggleBinding('fx', flag)], { cooldownMs: 800 });
+    const r = e.update(anyHand, 0);
     expect(r.fired).toContain('fx');
     expect(r.active.has('fx')).toBe(true);
   });
 
-  it('does not fire for a different pose', () => {
-    const e = new GestureEngine([template], { cooldownMs: 800, defaultThreshold: 0.6 });
-    const r = e.update(poseB, 0);
-    expect(r.fired).not.toContain('fx');
+  it('does not fire when the binding does not match', () => {
+    const flag = { on: false };
+    const e = new GestureEngine([toggleBinding('fx', flag)], { cooldownMs: 800 });
+    const r = e.update(anyHand, 0);
+    expect(r.fired).toHaveLength(0);
     expect(r.active.has('fx')).toBe(false);
   });
 
   it('respects cooldown but keeps active state', () => {
-    const e = new GestureEngine([template], { cooldownMs: 800, defaultThreshold: 0.6 });
-    expect(e.update(poseA, 0).fired).toContain('fx');
-    const mid = e.update(poseA, 400);
+    const flag = { on: true };
+    const e = new GestureEngine([toggleBinding('fx', flag)], { cooldownMs: 800 });
+    expect(e.update(anyHand, 0).fired).toContain('fx');
+    const mid = e.update(anyHand, 400);
     expect(mid.fired).not.toContain('fx');
     expect(mid.active.has('fx')).toBe(true);
-    expect(e.update(poseA, 900).fired).toContain('fx');
+    expect(e.update(anyHand, 900).fired).toContain('fx');
   });
 
-  it('returns nothing when no hand present', () => {
-    const e = new GestureEngine([template], {});
+  it('returns nothing when no hand is present', () => {
+    const e = new GestureEngine([toggleBinding('fx', { on: true })], {});
     const r = e.update(null, 0);
     expect(r.fired).toHaveLength(0);
     expect(r.active.size).toBe(0);
+  });
+
+  it('setBindings swaps the active bindings', () => {
+    const e = new GestureEngine([], { cooldownMs: 800 });
+    expect(e.update(anyHand, 0).active.size).toBe(0);
+    e.setBindings([toggleBinding('fx', { on: true })]);
+    expect(e.update(anyHand, 1000).active.has('fx')).toBe(true);
   });
 });

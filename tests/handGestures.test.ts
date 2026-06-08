@@ -6,7 +6,7 @@ type Finger = 'thumb' | 'index' | 'middle' | 'ring' | 'pinky';
 const JOINTS: Record<Finger, [number, number, number]> = {
   thumb: [2, 3, 4], index: [5, 6, 8], middle: [9, 10, 12], ring: [13, 14, 16], pinky: [17, 18, 20],
 };
-const COLS: Record<Finger, number> = { thumb: -2, index: 0, middle: 1, ring: 2, pinky: 3 };
+const COLS: Record<Finger, number> = { thumb: -4, index: 0, middle: 1, ring: 2, pinky: 3 };
 
 // Build a hand from a per-finger up/down spec.
 function hand(spec: Partial<Record<Finger, boolean>>): HandLandmarks {
