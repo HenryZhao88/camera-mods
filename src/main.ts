@@ -73,6 +73,8 @@ const CARDS: CardDef[] = [
 
 const cardEls = new Map<string, HTMLDivElement>();
 const flashUntil = new Map<string, number>(); // effectId -> ms, for one-shot highlight
+const sensitivity = new Map<string, number>(); // effectId -> threshold, survives re-renders
+const DEFAULT_THRESHOLD = 0.6;
 
 // ---- helpers ----
 function setState(text: string) { stateEl.textContent = text; }
@@ -145,8 +147,12 @@ function renderCards() {
       sens.className = 'sens';
       const slider = document.createElement('input');
       slider.type = 'range'; slider.min = '0.2'; slider.max = '1.2'; slider.step = '0.05';
-      slider.value = '0.6';
-      slider.oninput = () => engine.setThreshold(def.id, parseFloat(slider.value));
+      slider.value = String(sensitivity.get(def.id) ?? DEFAULT_THRESHOLD);
+      slider.oninput = () => {
+        const v = parseFloat(slider.value);
+        sensitivity.set(def.id, v);
+        engine.setThreshold(def.id, v);
+      };
       sens.append(document.createTextNode('strict'), slider, document.createTextNode('loose'));
       card.append(sens);
     } else if (def.extra) {

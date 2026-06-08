@@ -9,20 +9,28 @@ function mk(overrides: Record<number, [number, number]>): HandLandmarks {
   return arr;
 }
 
-// Finger [tip, pip] pairs used by the detector: index, middle, ring, pinky.
-const FINGER_PAIRS: Array<[number, number]> = [[8, 6], [12, 10], [16, 14], [20, 18]];
+// Finger [mcp, pip, tip] joint triples: index, middle, ring, pinky.
+const FINGERS: Array<[number, number, number]> = [[5, 6, 8], [9, 10, 12], [13, 14, 16], [17, 18, 20]];
 
-// Place every finger with tip FARTHER from the wrist than its pip -> extended.
-function openHand(): HandLandmarks {
-  const o: Record<number, [number, number]> = { 0: [0, 0] };
-  for (const [tip, pip] of FINGER_PAIRS) { o[pip] = [0, 2]; o[tip] = [0, 3]; }
-  return mk(o);
+// Straight finger: mcp -> pip -> tip colinear (angle at pip ≈ 180°).
+function straight(o: Record<number, [number, number]>, f: [number, number, number], col: number) {
+  const [mcp, pip, tip] = f;
+  o[mcp] = [col, 1]; o[pip] = [col, 2]; o[tip] = [col, 3];
+}
+// Curled finger: tip bends back toward the knuckle (angle at pip ≈ 0°).
+function curled(o: Record<number, [number, number]>, f: [number, number, number], col: number) {
+  const [mcp, pip, tip] = f;
+  o[mcp] = [col, 1]; o[pip] = [col, 2]; o[tip] = [col, 1];
 }
 
-// Place every finger with tip CLOSER to the wrist than its pip -> curled.
+function openHand(): HandLandmarks {
+  const o: Record<number, [number, number]> = {};
+  FINGERS.forEach((f, i) => straight(o, f, i));
+  return mk(o);
+}
 function fist(): HandLandmarks {
-  const o: Record<number, [number, number]> = { 0: [0, 0] };
-  for (const [tip, pip] of FINGER_PAIRS) { o[pip] = [0, 2]; o[tip] = [0, 1]; }
+  const o: Record<number, [number, number]> = {};
+  FINGERS.forEach((f, i) => curled(o, f, i));
   return mk(o);
 }
 
@@ -33,6 +41,13 @@ describe('extendedFingerCount', () => {
 
   it('counts zero on a fist', () => {
     expect(extendedFingerCount(fist())).toBe(0);
+  });
+
+  it('detects extension regardless of hand orientation (tilted/rotated)', () => {
+    // Rotate the straight open hand 90°: swap x/y so fingers run horizontally.
+    const upright = openHand();
+    const rotated: HandLandmarks = upright.map(p => ({ x: p.y, y: p.x, z: 0 }));
+    expect(extendedFingerCount(rotated)).toBe(4);
   });
 });
 
@@ -46,12 +61,11 @@ describe('classifyOpenFist', () => {
   });
 
   it('returns unknown for an in-between pose (two fingers up)', () => {
-    // index + middle extended, ring + pinky curled
-    const o: Record<number, [number, number]> = { 0: [0, 0] };
-    o[6] = [0, 2]; o[8] = [0, 3];   // index extended
-    o[10] = [0, 2]; o[12] = [0, 3]; // middle extended
-    o[14] = [0, 2]; o[16] = [0, 1]; // ring curled
-    o[18] = [0, 2]; o[20] = [0, 1]; // pinky curled
+    const o: Record<number, [number, number]> = {};
+    straight(o, FINGERS[0], 0); // index extended
+    straight(o, FINGERS[1], 1); // middle extended
+    curled(o, FINGERS[2], 2);   // ring curled
+    curled(o, FINGERS[3], 3);   // pinky curled
     expect(classifyOpenFist(mk(o))).toBe('unknown');
   });
 });

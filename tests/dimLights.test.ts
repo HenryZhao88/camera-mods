@@ -2,14 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { DimLights } from '../src/effects/dimLights';
 import type { HandLandmarks, HandResult, RenderContext } from '../src/types';
 
-const FINGER_PAIRS: Array<[number, number]> = [[8, 6], [12, 10], [16, 14], [20, 18]];
+// [mcp, pip, tip] joints for index, middle, ring, pinky.
+const FINGERS: Array<[number, number, number]> = [[5, 6, 8], [9, 10, 12], [13, 14, 16], [17, 18, 20]];
 
 function hand(kind: 'open' | 'fist'): HandResult {
   const lm: HandLandmarks = Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0 }));
-  for (const [tip, pip] of FINGER_PAIRS) {
-    lm[pip] = { x: 0, y: 2, z: 0 };
-    lm[tip] = { x: 0, y: kind === 'open' ? 3 : 1, z: 0 };
-  }
+  FINGERS.forEach(([mcp, pip, tip], i) => {
+    lm[mcp] = { x: i, y: 1, z: 0 };
+    lm[pip] = { x: i, y: 2, z: 0 };
+    lm[tip] = { x: i, y: kind === 'open' ? 3 : 1, z: 0 }; // open=straight, fist=tip bends back
+  });
   return { landmarks: lm, handedness: 'Right' };
 }
 

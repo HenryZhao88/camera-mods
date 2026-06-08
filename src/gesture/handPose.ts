@@ -1,26 +1,35 @@
-import type { HandLandmarks } from '../types';
+import type { HandLandmarks, Landmark } from '../types';
 
-// Wrist landmark + four finger [tip, pip] pairs (index, middle, ring, pinky).
-// The thumb is intentionally excluded: its geometry relative to the wrist is
-// unreliable for open/fist detection, especially under mirroring.
-const WRIST = 0;
-const FINGERS: Array<[number, number]> = [[8, 6], [12, 10], [16, 14], [20, 18]];
+// [mcp, pip, tip] joints for index, middle, ring, pinky.
+// The thumb is intentionally excluded — its geometry is unreliable for
+// open/fist detection, especially under mirroring.
+const FINGERS: Array<[number, number, number]> = [
+  [5, 6, 8],
+  [9, 10, 12],
+  [13, 14, 16],
+  [17, 18, 20],
+];
 
-// Margin so a barely-curled finger doesn't flicker as "extended".
-const EXTENDED_MARGIN = 1.1;
+// A finger counts as extended when it is roughly straight: the angle at the PIP
+// joint (segment back to the knuckle vs. segment out to the tip) is wide.
+// cos ≈ -1 means straight, cos ≈ 0/positive means curled. This is based on the
+// finger's own joints, so it is orientation-independent and survives hand tilt,
+// rotation, and pointing toward the camera — unlike a wrist-distance heuristic.
+const STRAIGHT_COS = -0.5; // angle wider than ~120°
 
-function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
-  const dx = a.x - b.x, dy = a.y - b.y;
-  return Math.sqrt(dx * dx + dy * dy);
+function angleCos(a: Landmark, vertex: Landmark, b: Landmark): number {
+  const ax = a.x - vertex.x, ay = a.y - vertex.y;
+  const bx = b.x - vertex.x, by = b.y - vertex.y;
+  const dot = ax * bx + ay * by;
+  const mag = Math.hypot(ax, ay) * Math.hypot(bx, by);
+  return mag === 0 ? 0 : dot / mag;
 }
 
-// How many of the four fingers are extended: a finger is extended when its
-// tip is meaningfully farther from the wrist than its middle (pip) joint.
+// How many of the four fingers are extended (straight).
 export function extendedFingerCount(landmarks: HandLandmarks): number {
-  const wrist = landmarks[WRIST];
   let count = 0;
-  for (const [tip, pip] of FINGERS) {
-    if (dist(landmarks[tip], wrist) > dist(landmarks[pip], wrist) * EXTENDED_MARGIN) {
+  for (const [mcp, pip, tip] of FINGERS) {
+    if (angleCos(landmarks[mcp], landmarks[pip], landmarks[tip]) < STRAIGHT_COS) {
       count++;
     }
   }
