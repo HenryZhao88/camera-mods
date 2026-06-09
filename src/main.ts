@@ -464,13 +464,14 @@ function renderGlobals() {
   startWrap.className = 'start';
   startWrap.append(startBtn);
 
+  const cleanBtn = button('🖥 Clean view', enterClean);
   const clearBtn = button('🧹 Clear screen', clearScreen);
   const resetBtn = button('🗑 Reset all', resetAll);
   resetBtn.className = 'danger';
   const exportBtn = button('⬇ Export', doExport);
   const importBtn = button('⬆ Import', () => fileInput.click());
 
-  globalsEl.append(startWrap, clearBtn, resetBtn, exportBtn, importBtn);
+  globalsEl.append(startWrap, cleanBtn, clearBtn, resetBtn, exportBtn, importBtn);
 }
 
 // hidden file input for import
@@ -501,8 +502,20 @@ screenFxSelect.onchange = () => {
   if (compositor) compositor.screenFilter = currentScreenFilter;
 };
 
+// ---- clean view (hide panel so OBS captures only the camera + effects) ----
+const exitCleanBtn = document.getElementById('exitclean') as HTMLButtonElement;
+function enterClean() { document.body.classList.add('clean'); }
+function exitClean() { document.body.classList.remove('clean'); }
+exitCleanBtn.onclick = exitClean;
+window.addEventListener('keydown', e => {
+  if (document.body.classList.contains('clean') && (e.key === 'Escape' || e.key === 'c')) exitClean();
+});
+
 // ---- boot ----
-hintEl.textContent = 'Pick a distinct activation pose per effect. Pipe into Zoom/Meet via OBS Virtual Camera.';
+hintEl.textContent = 'Pick a distinct activation pose per effect. Capture in OBS → Virtual Camera for Zoom/Meet.';
 rebuildBindings();
 renderCards();
 renderGlobals();
+
+// OBS browser sources can deep-link straight into clean view with ?clean=1
+if (new URLSearchParams(location.search).get('clean') !== null) enterClean();
