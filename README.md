@@ -99,15 +99,21 @@ Browsers can't feed a "camera" into Zoom/Meet/Discord directly, so we route
 through OBS (free):
 
 1. Install **[OBS Studio](https://obsproject.com/)**.
-2. In OBS, under **Sources**, click **+** → **Window Capture** → pick the Chrome
-   window running CamMods. (Or use a **Browser** source pointed at
-   `http://localhost:5173`.)
-3. Resize the source to fill the canvas if needed.
+2. **Turn on Clean view** so the control panel isn't captured — click **🖥 Clean view**
+   in the panel (press **Esc** or **C** to exit). The window then shows only your
+   camera + effects.
+3. In OBS, under **Sources**, click **+**:
+   - **Browser** source → URL `http://localhost:5173/?clean=1` (the `?clean=1`
+     deep-links straight into clean view — best for OBS), size 1280×720; **or**
+   - **Window Capture** → pick the Chrome window (with Clean view on).
 4. Click **Start Virtual Camera** (bottom-right in OBS).
 5. In Zoom / Meet / Discord, open camera settings and choose
    **"OBS Virtual Camera"**.
 
 Now your gesture effects show up in the call. 🎉
+
+> Tip: for the cleanest capture, also put the browser in fullscreen (or use the
+> `?clean=1` Browser source) so no tabs/address bar are in frame.
 
 ---
 
