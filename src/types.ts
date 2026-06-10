@@ -1,3 +1,7 @@
+import type { Container } from 'pixi.js';
+import type { ScreenShake } from './fx/shake';
+import type { TransientFx } from './fx/transients';
+import type { FxTextures } from './fx/proceduralTextures';
 import type { EffectMode } from './effects/effectDriver';
 
 export interface Landmark { x: number; y: number; z: number; }
@@ -29,6 +33,18 @@ export interface RenderContext {
   now: number;             // ms
 }
 
+// Layers + shared services an effect mounts into, handed over once by the compositor.
+export interface EffectStage {
+  world: Container;     // shaken world (video + effects + overlay)
+  effects: Container;   // world-space effect layer (most visuals go here)
+  screen: Container;    // "on the lens" — not shaken (splats, dim grade, flashes)
+  fx: {
+    shake: ScreenShake;
+    transients: TransientFx;
+    textures: FxTextures;
+  };
+}
+
 export interface Effect {
   id: string;
   mode: EffectMode;
@@ -38,4 +54,5 @@ export interface Effect {
   render(g: CanvasRenderingContext2D, ctx: RenderContext): void;
   isActive(): boolean;
   reset?(): void;          // wipe all visible state (used by "Clear screen")
+  init?(stage: EffectStage): void; // mount display objects (Task 6 makes this required)
 }

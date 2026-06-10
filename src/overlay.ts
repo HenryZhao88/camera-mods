@@ -1,3 +1,4 @@
+import type { Graphics } from 'pixi.js';
 import type { HandLandmarks } from './types';
 
 // Standard MediaPipe hand skeleton: pairs of landmark indices to connect.
@@ -12,39 +13,26 @@ const HAND_CONNECTIONS: Array<[number, number]> = [
 
 const TIPS = new Set([4, 8, 12, 16, 20]);
 
-// Draw the tracked hand's bones + joints over the (mirrored) video.
-// landmarks are normalized 0..1; w/h are the canvas dimensions.
+// Draw the tracked hand's bones + joints into a (pre-cleared) Graphics layer.
+// landmarks are normalized 0..1; w/h are the canvas dimensions. Callable multiple
+// times per frame (one call per hand).
 export function drawHandSkeleton(
-  g: CanvasRenderingContext2D,
+  gfx: Graphics,
   landmarks: HandLandmarks,
   w: number,
   h: number,
 ): void {
-  g.save();
-
-  // bones
-  g.lineWidth = 2;
-  g.strokeStyle = 'rgba(125,249,255,0.65)';
   for (const [a, b] of HAND_CONNECTIONS) {
     const pa = landmarks[a], pb = landmarks[b];
-    g.beginPath();
-    g.moveTo(pa.x * w, pa.y * h);
-    g.lineTo(pb.x * w, pb.y * h);
-    g.stroke();
+    gfx.moveTo(pa.x * w, pa.y * h).lineTo(pb.x * w, pb.y * h);
   }
+  gfx.stroke({ width: 2, color: 0x7df9ff, alpha: 0.65 });
 
-  // joints
   for (let i = 0; i < landmarks.length; i++) {
     const p = landmarks[i];
     const tip = TIPS.has(i);
-    g.beginPath();
-    g.arc(p.x * w, p.y * h, tip ? 5 : 3.5, 0, Math.PI * 2);
-    g.fillStyle = '#0a0c11';
-    g.fill();
-    g.lineWidth = 2;
-    g.strokeStyle = tip ? '#ffd27d' : '#7df9ff';
-    g.stroke();
+    gfx.circle(p.x * w, p.y * h, tip ? 5 : 3.5)
+      .fill({ color: 0x0a0c11 })
+      .stroke({ width: 2, color: tip ? 0xffd27d : 0x7df9ff });
   }
-
-  g.restore();
 }

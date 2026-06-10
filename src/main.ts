@@ -9,7 +9,7 @@ import { isEnabled, setEnabled } from './gesture/enabledStore';
 import {
   loadTemplates, removeTemplate, clearTemplates, exportTemplates, importTemplates,
 } from './gesture/templateStore';
-import { Compositor } from './compositor';
+import { PixiCompositor } from './pixiCompositor';
 import { calibrate, countdown } from './calibration';
 import { FingertipLightning } from './effects/fingertipLightning';
 import { DimLights } from './effects/dimLights';
@@ -19,7 +19,7 @@ import { FireBreath } from './effects/fireBreath';
 import { LightningEyes } from './effects/lightningEyes';
 import { GunShot } from './effects/gunShot';
 import type { Effect } from './types';
-import { SCREEN_FILTERS, type ScreenFilter } from './screenFilters';
+import { SCREEN_FILTERS, type ScreenFilter } from './filters';
 
 // ---- elements ----
 const canvas = document.getElementById('view') as HTMLCanvasElement;
@@ -60,7 +60,7 @@ for (const [id, fx] of Object.entries(selfDriven)) fx.enabled = isEnabled(id, ef
 // Render order (back to front): dim darkens first, glowing effects layer on top.
 const effects: Effect[] = [dim, lightning, blast, fire, eyes, gun, pinch];
 const engine = new GestureEngine([], { cooldownMs: 800, exclusive: true });
-let compositor: Compositor | null = null;
+let compositor: PixiCompositor | null = null;
 let running = false;
 
 interface CardDef {
@@ -401,30 +401,34 @@ async function start() {
     await camera.start();
     setState('loading hand model…');
     await tracker.init();
-    compositor = new Compositor(canvas, camera, tracker, faceTracker, engine, effects, {
-      onFrame: (hand, fired, active) => {
-        const now = performance.now();
-        if (lastFrameTime) {
-          const fps = 1000 / (now - lastFrameTime);
-          fpsAvg = fpsAvg ? fpsAvg * 0.9 + fps * 0.1 : fps;
-          fpsEl.textContent = `${Math.round(fpsAvg)} fps`;
-        }
-        lastFrameTime = now;
+    if (!compositor) {
+      compositor = new PixiCompositor(camera, tracker, faceTracker, engine, effects, {
+        onFrame: (hand, fired, active) => {
+          const now = performance.now();
+          if (lastFrameTime) {
+            const fps = 1000 / (now - lastFrameTime);
+            fpsAvg = fpsAvg ? fpsAvg * 0.9 + fps * 0.1 : fps;
+            fpsEl.textContent = `${Math.round(fpsAvg)} fps`;
+          }
+          lastFrameTime = now;
 
-        for (const id of fired) flashUntil.set(id, now + 450);
-        for (const [id, el] of cardEls) {
-          const lit =
-            active.has(id) ||
-            (flashUntil.get(id) ?? 0) > now ||
-            (id === 'dim-lights' && dim.isActive()) ||
-            (id === 'fire-breath' && fire.isActive()) ||
-            (id === 'lightning-eyes' && eyes.isActive()) ||
-            (id === 'gun-shot' && gun.isActive());
-          el.classList.toggle('active', lit);
-        }
-        handEl.textContent = hand ? '✋ hand' : 'no hand';
-      },
-    });
+          for (const id of fired) flashUntil.set(id, now + 450);
+          for (const [id, el] of cardEls) {
+            const lit =
+              active.has(id) ||
+              (flashUntil.get(id) ?? 0) > now ||
+              (id === 'dim-lights' && dim.isActive()) ||
+              (id === 'fire-breath' && fire.isActive()) ||
+              (id === 'lightning-eyes' && eyes.isActive()) ||
+              (id === 'gun-shot' && gun.isActive());
+            el.classList.toggle('active', lit);
+          }
+          handEl.textContent = hand ? '✋ hand' : 'no hand';
+        },
+      });
+      setState('starting renderer…');
+      await compositor.init(canvas);
+    }
     compositor.showLandmarks = showPoints.checked;
     compositor.screenFilter = currentScreenFilter;
     compositor.start();
@@ -517,5 +521,8 @@ rebuildBindings();
 renderCards();
 renderGlobals();
 
-// OBS browser sources can deep-link straight into clean view with ?clean=1
-if (new URLSearchParams(location.search).get('clean') !== null) enterClean();
+// OBS browser sources can deep-link straight into clean view with ?clean=1,
+// and auto-start the camera with ?autostart=1 (no Interact-dialog clicking).
+const params = new URLSearchParams(location.search);
+if (params.get('clean') !== null) enterClean();
+if (params.get('autostart') !== null) void start();
