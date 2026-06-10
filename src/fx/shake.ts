@@ -7,7 +7,7 @@ export class ScreenShake {
   private mag = 0;
 
   kick(strength: number): void {
-    this.mag = Math.min(MAX_MAG, this.mag + strength);
+    this.mag = Math.min(MAX_MAG, this.mag + Math.max(0, strength));
   }
 
   update(dt: number): void {

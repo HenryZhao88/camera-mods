@@ -32,4 +32,20 @@ describe('ScreenShake', () => {
     const o = s.offset(() => 0.99);
     expect(Math.hypot(o.x, o.y)).toBeLessThanOrEqual(8 + 1e-9);
   });
+
+  it('ignores negative kicks', () => {
+    const s = new ScreenShake();
+    s.kick(-5);
+    expect(s.magnitude).toBe(0);
+    s.kick(10);
+    s.kick(-3);
+    expect(s.magnitude).toBe(10);
+  });
+
+  it('stacks additive kicks below the clamp', () => {
+    const s = new ScreenShake();
+    s.kick(10);
+    s.kick(20);
+    expect(s.magnitude).toBe(30);
+  });
 });

@@ -23,12 +23,13 @@ export function stepParticle(p: ParticleState, dt: number): boolean {
   p.vy *= damp;
   p.x += p.vx * dt;
   p.y += p.vy * dt;
-  p.size *= 1 + p.grow * dt;
+  p.size = Math.max(0, p.size * (1 + p.grow * dt));
   p.rotation += p.spin * dt;
   p.life -= dt;
   return p.life > 0;
 }
 
 export function particleAlpha(p: ParticleState): number {
+  if (p.maxLife <= 0) return 0;
   return Math.max(0, p.life / p.maxLife) * p.alpha;
 }

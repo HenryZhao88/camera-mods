@@ -42,6 +42,18 @@ describe('stepParticle', () => {
     expect(stepParticle(p, 0.05)).toBe(true);
     expect(stepParticle(p, 0.06)).toBe(false);
   });
+
+  it('clamps size at 0 for large negative grow', () => {
+    const p = make({ size: 10, grow: -100 });
+    stepParticle(p, 1);
+    expect(p.size).toBe(0);
+  });
+
+  it('drag never reverses velocity even when drag*dt exceeds 1', () => {
+    const p = make({ vx: 100, drag: 2 });
+    stepParticle(p, 1);
+    expect(p.vx).toBe(0);
+  });
 });
 
 describe('particleAlpha', () => {
@@ -52,6 +64,11 @@ describe('particleAlpha', () => {
 
   it('never goes negative', () => {
     const p = make({ life: -0.1 });
+    expect(particleAlpha(p)).toBe(0);
+  });
+
+  it('returns 0 (not NaN) when maxLife is 0', () => {
+    const p = make({ life: 0, maxLife: 0 });
     expect(particleAlpha(p)).toBe(0);
   });
 });
