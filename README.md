@@ -57,9 +57,11 @@ Defaults: ⚡ Lightning = ✌️ Peace, 💥 Blast = ☝️ Point, ✏️ Draw =
 Pick a *distinct* pose for each so they don't collide. Choices are **saved in the
 browser** and survive restarts.
 
-**Custom (record your own):** choose **✎ Custom** in the dropdown to record your
-own hand symbol — a 3-2-1 countdown, then hold your pose. A **strict ↔ loose**
-sensitivity slider and a **✕** (clear) appear for custom gestures.
+**Custom (record your own):** choose **✎ Custom** in a card's dropdown to record your
+own gesture in a **guided overlay**: a 3-2-1 countdown, a live skeleton showing
+exactly what's tracked, and a progress ring while it captures. Multi-step triggers
+walk you through each pose. A **strict ↔ loose** sensitivity slider and a **✕**
+(clear) appear for custom gestures.
 
 > **Heads-up:** 🌙 **Dim** automatically watches for open-hand vs. fist, so avoid
 > using **Fist** as an activation pose for another effect — they'd fight.
@@ -72,8 +74,10 @@ Make an effect's pose and it fires; its card glows in the effect's color.
 - **🕸 Web Shot** is *one-shot* — the web splats onto the lens and peels off ~5s later.
 - **🌀 Kamehameha** is *automatic* (on by default) — hold your **palms together** to
   charge the orb, then **push toward the camera** to fire. Breaking the pose drains it.
+  The charge pose is customizable too (Trigger → ✎ Custom records any two-hand pose).
 - **🔫 Finger Gun** is *automatic* — make a finger gun (index out, thumb up) and
-  **drop your thumb** to fire: muzzle flash + bang sound. **Dual-wields**: two hands, two guns.
+  **drop your thumb** to fire: muzzle flash + bang sound. **Dual-wields**: two hands, two guns
+  — or record your **own two-pose trigger** (Trigger → ✎ Custom: a READY pose, then a FIRE pose).
 - **🌙 Dim** is *automatic & gradual* — make a **fist** to fade the room down over
   ~1.5s, **open your hand** to fade it back up.
 - **👁️ Lightning Eyes** and **🔥 Fire Breath** are **off by default** (they use face
@@ -126,7 +130,7 @@ Now your gesture effects show up in the call. 🎉
 |---------|-----|
 | "Camera access failed" | Click the camera icon in Chrome's address bar → Allow. Make sure no other app is using the webcam. |
 | "Loading hand model…" stuck | The hand model downloads from the internet on first run — check your connection and refresh. |
-| "No hand detected — try again" during calibration | Make sure your hand is well-lit and fully in frame, then click 🎯 again. |
+| Recording times out ("Couldn't see your hand") | Make sure your hand (or both hands) is well-lit and fully in frame, then hit ↻ Retry. |
 | Effect won't trigger | Re-calibrate that gesture, or nudge its sensitivity slider toward **loose**. |
 | Two effects fire at once | Their symbols are too similar — clear (✕) one and re-record a more distinct pose. |
 | Lights dim when I don't want them to | You made a fist — open your hand to fade back up, or untick **Enabled** on the Dim card. |
@@ -175,7 +179,9 @@ Webcam → HandTracker (MediaPipe, 2 hands) → GestureEngine → EffectDriver �
 | `src/gesture/bindingStore.ts` | Persists each effect's chosen activation pose |
 | `src/gesture/handPose.ts` | Open-hand / fist detection (used by Dim) |
 | `src/gesture/templateStore.ts` | Custom-gesture persistence + export/import |
-| `src/calibration.ts` | Averaged gesture capture |
+| `src/recorder.ts` | Guided recording wizard (countdown, live capture, retry) |
+| `src/gesture/capture.ts` | Frame-capture averaging (one or two hands, span) |
+| `src/gesture/customTriggers.ts` | Two-hand pose matcher + staged ready→fire trigger |
 | `src/effects/effectDriver.ts` | Maps gesture events → effect lifecycle (hold/toggle/oneshot) |
 | `src/effects/dimLights.ts` | Self-driven gradual dim from hand openness (not calibrated) |
 | `src/effects/fireBreath.ts` | Mouth-driven fire particle stream (face tracking) |
