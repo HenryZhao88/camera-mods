@@ -70,3 +70,26 @@ describe('GestureEngine', () => {
     expect(r.fired.sort()).toEqual(['a', 'b']);
   });
 });
+
+describe('GestureEngine (multi-hand)', () => {
+  it('fires when ANY hand matches', () => {
+    const e = new GestureEngine(
+      [{ effectId: 'fx', test: lm => lm[0].x > 0.5 }],
+      { cooldownMs: 800 },
+    );
+    const miss: HandLandmarks = Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0 }));
+    const hit: HandLandmarks = Array.from({ length: 21 }, () => ({ x: 1, y: 0, z: 0 }));
+    const r = e.update([miss, hit], 0);
+    expect(r.fired).toContain('fx');
+  });
+
+  it('still accepts a single HandLandmarks argument (back-compat)', () => {
+    const e = new GestureEngine([toggleBinding('fx', { on: true })], {});
+    expect(e.update(anyHand, 0).fired).toContain('fx');
+  });
+
+  it('returns nothing for an empty hands array', () => {
+    const e = new GestureEngine([toggleBinding('fx', { on: true })], {});
+    expect(e.update([], 0).active.size).toBe(0);
+  });
+});

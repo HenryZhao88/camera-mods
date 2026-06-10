@@ -23,7 +23,7 @@ function gunHand(thumbUp: boolean): HandLandmarks {
 
 function ctx(landmarks: HandLandmarks, now: number): RenderContext {
   const hand: HandResult = { landmarks, handedness: 'Right' };
-  return { width: 200, height: 200, hand, face: null, now };
+  return { width: 200, height: 200, hand, hands: [hand], face: null, now };
 }
 
 describe('GunShot', () => {
@@ -47,5 +47,19 @@ describe('GunShot', () => {
     g.update(1 / 60, ctx(gunHand(true), 0));
     g.update(1 / 60, ctx(gunHand(false), 100));
     expect(g.isActive()).toBe(false);
+  });
+
+  it('two hands fire independently (dual wield)', () => {
+    const g = new GunShot();
+    const L = (up: boolean): HandResult => ({ landmarks: gunHand(up), handedness: 'Left' });
+    const R = (up: boolean): HandResult => ({ landmarks: gunHand(up), handedness: 'Right' });
+    const mk = (l: HandResult, r: HandResult, now: number): RenderContext =>
+      ({ width: 200, height: 200, hand: l, hands: [l, r], face: null, now });
+
+    g.update(1 / 60, mk(L(true), R(true), 0));     // both cocked
+    g.update(1 / 60, mk(L(false), R(true), 100));  // left fires
+    expect(g.isActive()).toBe(true);
+    g.update(1 / 60, mk(L(false), R(false), 120)); // right fires immediately after
+    expect(g.isActive()).toBe(true);
   });
 });

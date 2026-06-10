@@ -28,9 +28,10 @@ export interface FaceResult {
 export interface RenderContext {
   width: number;
   height: number;
-  hand: HandResult | null; // primary hand this frame
-  face: FaceResult | null; // primary face this frame (null unless face tracking on)
-  now: number;             // ms
+  hand: HandResult | null;  // primary hand (hands[0] ?? null)
+  hands: HandResult[];      // all tracked hands this frame (0-2)
+  face: FaceResult | null;  // primary face this frame (null unless face tracking on)
+  now: number;              // ms
 }
 
 // Layers + shared services an effect mounts into, handed over once by the compositor.

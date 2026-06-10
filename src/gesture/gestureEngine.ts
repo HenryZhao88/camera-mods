@@ -31,15 +31,24 @@ export class GestureEngine {
 
   setBindings(bindings: GestureBinding[]): void { this.bindings = bindings; }
 
-  update(live: HandLandmarks | null, now: number): GestureEngineResult {
+  // Accepts one hand, several hands, or null. A binding matches if ANY hand passes.
+  update(live: HandLandmarks | HandLandmarks[] | null, now: number): GestureEngineResult {
     const fired: string[] = [];
     const active = new Set<string>();
-    if (!live) return { fired, active };
+    // Normalize to HandLandmarks[]. live[0] is a Landmark object for a single
+    // hand and an array for a list of hands; an empty list has live[0] === undefined,
+    // so it needs its own arm (Array.isArray(undefined) is false and would mis-wrap it).
+    const hands: HandLandmarks[] =
+      live == null ? []
+      : Array.isArray(live[0]) ? (live as HandLandmarks[])
+      : (live as HandLandmarks).length === 0 ? []
+      : [live as HandLandmarks];
+    if (hands.length === 0) return { fired, active };
 
     // In exclusive mode the bindings array order is the priority: the first
     // binding whose pose matches wins, so an ambiguous pose only triggers one effect.
     for (const b of this.bindings) {
-      if (!b.test(live)) continue;
+      if (!hands.some(h => b.test(h))) continue;
       active.add(b.effectId);
       const last = this.lastFired.get(b.effectId) ?? -Infinity;
       if (now - last >= this.cooldownMs) {

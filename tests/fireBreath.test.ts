@@ -13,7 +13,7 @@ function faceLandmarks(open: boolean): Landmark[] {
 }
 
 function ctx(face: FaceResult | null): RenderContext {
-  return { width: 200, height: 200, hand: null, face, now: 0 };
+  return { width: 200, height: 200, hand: null, hands: [], face, now: 0 };
 }
 
 describe('FireBreath (mouth-driven)', () => {

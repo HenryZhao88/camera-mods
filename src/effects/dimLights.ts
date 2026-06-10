@@ -46,14 +46,16 @@ export class DimLights implements Effect {
   update(dt: number, ctx: RenderContext): void {
     if (!this.enabled) {
       this.target = 0;
-    } else if (ctx.hand) {
-      const pose = classifyOpenFist(ctx.hand.landmarks);
-      if (pose === 'open' || pose === 'fist') {
+    } else if (ctx.hands.length > 0) {
+      // Deterministic priority: any fist dims; otherwise any open hand brightens.
+      const poses = ctx.hands.map(h => classifyOpenFist(h.landmarks));
+      const pose = poses.includes('fist') ? 'fist' : poses.includes('open') ? 'open' : null;
+      if (pose) {
         if (pose === this.pending) this.confirm++;
         else { this.pending = pose; this.confirm = 1; }
         if (this.confirm >= CONFIRM_FRAMES) this.target = pose === 'fist' ? 1 : 0;
       }
-      // 'unknown' (mid-transition): hold the current target and pending pose
+      // ambiguous hands only: hold the current target and pending pose
     }
 
     const step = dt / FADE_SECONDS;

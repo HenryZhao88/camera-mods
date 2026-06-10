@@ -27,7 +27,7 @@ export class HandTracker {
     return HandLandmarker.createFromOptions(fileset, {
       baseOptions: { modelAssetPath: MODEL_URL, delegate },
       runningMode: 'VIDEO',
-      numHands: 1,
+      numHands: 2,
       minHandDetectionConfidence: 0.7,
       minHandPresenceConfidence: 0.7,
       minTrackingConfidence: 0.6,

@@ -154,9 +154,9 @@ export class PixiCompositor {
       face = this.faceTracker.detect(this.camera.video, now)[0] ?? null;
     }
 
-    const ctx: RenderContext = { width: w, height: h, hand, face, now };
+    const ctx: RenderContext = { width: w, height: h, hand, hands, face, now };
 
-    const result = this.engine.update(hand ? hand.landmarks : null, now);
+    const result = this.engine.update(hands.map(hd => hd.landmarks), now);
     this.driver.apply(result.fired, result.active);
     this.hooks.onFrame?.(hand, result.fired, result.active);
 

@@ -14,7 +14,7 @@ export class GunShot implements Effect {
   id = 'gun-shot';
   mode = 'oneshot' as const;
   enabled = true;
-  private core = new GunCore();
+  private cores: Record<'Left' | 'Right', GunCore> = { Left: new GunCore(), Right: new GunCore() };
   private mounted = false;
   private stage: EffectStage | null = null;
   private view = new Container();
@@ -49,7 +49,7 @@ export class GunShot implements Effect {
   stop(): void {}
   isActive(): boolean { return this.flash > 0 || (this.ps?.count ?? 0) > 0 || (this.smoke?.count ?? 0) > 0; }
   reset(): void {
-    this.flash = -1; this.core.reset();
+    this.flash = -1; this.cores.Left.reset(); this.cores.Right.reset();
     this.ps?.clear(); this.smoke?.clear();
     this.hideFlash();
   }
@@ -59,13 +59,21 @@ export class GunShot implements Effect {
     this.ps?.update(dt);
     this.smoke?.update(dt);
 
-    if (this.enabled && ctx.hand) {
-      const lm = ctx.hand.landmarks;
-      const f = fingersUp(lm);
-      const isGun = f[1] && !f[2] && !f[3] && !f[4];
-      if (this.core.step({ isGun, thumbUp: f[0] }, ctx.now)) this.shoot(lm, ctx);
+    if (this.enabled && ctx.hands.length > 0) {
+      const seen = new Set<string>();
+      for (const hd of ctx.hands) {
+        seen.add(hd.handedness);
+        const lm = hd.landmarks;
+        const f = fingersUp(lm);
+        const isGun = f[1] && !f[2] && !f[3] && !f[4];
+        if (this.cores[hd.handedness].step({ isGun, thumbUp: f[0] }, ctx.now)) this.shoot(lm, ctx);
+      }
+      for (const side of ['Left', 'Right'] as const) {
+        if (!seen.has(side)) this.cores[side].step(null, ctx.now);
+      }
     } else {
-      this.core.step(null, ctx.now);
+      this.cores.Left.step(null, ctx.now);
+      this.cores.Right.step(null, ctx.now);
     }
 
     if (this.mounted) this.syncFlash();

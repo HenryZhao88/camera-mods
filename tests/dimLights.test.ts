@@ -16,7 +16,7 @@ function hand(kind: 'open' | 'fist'): HandResult {
 }
 
 function ctx(h: HandResult | null): RenderContext {
-  return { width: 100, height: 100, hand: h, face: null, now: 0 };
+  return { width: 100, height: 100, hand: h, hands: h ? [h] : [], face: null, now: 0 };
 }
 
 // Advance the effect by `seconds` worth of 60fps frames.
@@ -57,5 +57,16 @@ describe('DimLights (open/fist self-driven fade)', () => {
     d.enabled = false;
     run(d, hand('fist'), 2);
     expect(d.isActive()).toBe(false);
+  });
+
+  it('a fist on EITHER hand dims even when the other hand is open', () => {
+    const d = new DimLights();
+    const both: RenderContext = {
+      width: 100, height: 100,
+      hand: hand('open'), hands: [hand('open'), hand('fist')],
+      face: null, now: 0,
+    };
+    for (let i = 0; i < 120; i++) d.update(1 / 60, both);
+    expect(d.isActive()).toBe(true);
   });
 });
