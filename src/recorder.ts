@@ -47,6 +47,7 @@ export class RecorderWizard {
 
   feedHands(h: HandResult[]): void { this.hands = h; }
   get isOpen(): boolean { return this.open; }
+  cancel(): void { this.cancelled = true; }
 
   // Returns the built template, or null if the user cancelled.
   async run(flow: RecordFlow): Promise<GestureTemplate | null> {

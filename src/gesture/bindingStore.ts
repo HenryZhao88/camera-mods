@@ -1,7 +1,8 @@
 import type { GestureId } from './handGestures';
 
-// Per-effect activation choice: a built-in preset, or 'custom' (recorded gesture).
-export type GestureChoice = GestureId | 'custom';
+// Per-effect activation choice: a built-in preset (bindable effects), 'default'
+// (self-driven effects' built-in trigger), or 'custom' (recorded gesture).
+export type GestureChoice = GestureId | 'custom' | 'default';
 
 const KEY = 'cammods.bindings';
 

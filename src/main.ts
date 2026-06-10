@@ -7,10 +7,10 @@ import { GESTURE_PRESETS, GESTURE_IDS, type GestureId } from './gesture/handGest
 import { saveChoice, getChoice, type GestureChoice } from './gesture/bindingStore';
 import { isEnabled, setEnabled } from './gesture/enabledStore';
 import {
-  loadTemplates, removeTemplate, clearTemplates, exportTemplates, importTemplates,
+  loadTemplates, saveTemplate, removeTemplate, clearTemplates, exportTemplates, importTemplates,
 } from './gesture/templateStore';
 import { PixiCompositor } from './pixiCompositor';
-import { calibrate, countdown } from './calibration';
+import { RecorderWizard, singlePoseFlow, gunFlow, beamFlow, type RecordFlow } from './recorder';
 import { FingertipLightning } from './effects/fingertipLightning';
 import { DimLights } from './effects/dimLights';
 import { PalmBlast } from './effects/palmBlast';
@@ -21,7 +21,7 @@ import { GunShot } from './effects/gunShot';
 import { EnergyShield } from './effects/energyShield';
 import { EnergyBeam } from './effects/energyBeam';
 import { WebShot } from './effects/webShot';
-import type { Effect } from './types';
+import type { Effect, StagedTemplate, TwoHandTemplate } from './types';
 import { SCREEN_FILTERS, type ScreenFilter } from './filters';
 
 // ---- elements ----
@@ -70,6 +70,26 @@ const engine = new GestureEngine([], { cooldownMs: 800, exclusive: true });
 let compositor: PixiCompositor | null = null;
 let running = false;
 
+const recorder = new RecorderWizard();
+
+function flowFor(def: CardDef): RecordFlow {
+  if (def.id === 'gun-shot') return gunFlow();
+  if (def.id === 'energy-beam') return beamFlow();
+  return singlePoseFlow(def.id, def.name);
+}
+
+// Push current custom triggers (or their absence) into the two self-driven effects.
+function pushCustomTriggers() {
+  const templates = loadTemplates();
+  const gunTpl = templates.find(t => t.effectId === 'gun-shot' && t.kind === 'stages') as StagedTemplate | undefined;
+  const gunOn = getChoice('gun-shot', 'default') === 'custom' && gunTpl;
+  gun.setCustomTrigger(gunOn ? gunTpl : null, () => sensitivity.get('gun-shot') ?? DEFAULT_THRESHOLD);
+
+  const beamTpl = templates.find(t => t.effectId === 'energy-beam' && t.kind === 'two-hand') as TwoHandTemplate | undefined;
+  const beamOn = getChoice('energy-beam', 'default') === 'custom' && beamTpl;
+  beam.setCustomCharge(beamOn ? beamTpl : null, () => sensitivity.get('energy-beam') ?? DEFAULT_THRESHOLD);
+}
+
 interface CardDef {
   id: string;
   icon: string;
@@ -78,6 +98,7 @@ interface CardDef {
   desc: string;
   bindable: boolean;             // has an activation-gesture dropdown
   defaultGesture?: GestureId;    // initial preset for bindable effects
+  customTrigger?: string;        // self-driven effects: label of the built-in trigger
   extra?: () => HTMLElement;     // optional extra control (clear lines / enable toggle)
 }
 
@@ -112,11 +133,13 @@ const CARDS: CardDef[] = [
     id: 'energy-beam', icon: '🌀', name: 'Kamehameha', color: '#7fc8ff',
     desc: 'Automatic — hold your <b>palms together</b> to charge, then <b>push at the camera</b> to fire.',
     bindable: false,
+    customTrigger: 'Default (palms together)',
   },
   {
     id: 'gun-shot', icon: '🔫', name: 'Finger Gun', color: '#ff5a5a',
     desc: 'Make a finger gun (index out, thumb up) and <b>drop your thumb</b> to fire — muzzle flash + bang.',
     bindable: false,
+    customTrigger: 'Default (finger gun)',
   },
   {
     id: 'lightning-eyes', icon: '👁️', name: 'Lightning Eyes', color: '#7df9ff',
@@ -232,7 +255,7 @@ function rebuildBindings() {
       if (t) {
         bindings.push(customBinding(def.id, t.landmarks, () => sensitivity.get(def.id) ?? DEFAULT_THRESHOLD));
       }
-    } else {
+    } else if (choice !== 'default') {
       // guard against a tampered/unknown stored pose falling through to a crash
       const preset = GESTURE_PRESETS[choice] ? choice : (def.defaultGesture ?? 'open');
       bindings.push(presetBinding(def.id, preset));
@@ -242,9 +265,35 @@ function rebuildBindings() {
 }
 
 // ---- card rendering ----
+
+// Re-record / clear / sensitivity controls shown when an effect uses a custom gesture.
+function customControlsRow(def: CardDef, card: HTMLDivElement) {
+  const set = hasTemplate(def.id);
+  const row = document.createElement('div');
+  row.className = 'row';
+  const rec = button(set ? '↻ Re-record' : '🎯 Record', () => recordCustom(def));
+  rec.className = 'primary';
+  const clr = button('✕', () => clearCustom(def.id));
+  clr.className = 'icon-btn';
+  clr.title = 'Clear custom gesture';
+  clr.disabled = !set;
+  row.append(rec, clr);
+  card.append(row);
+
+  const sens = document.createElement('div');
+  sens.className = 'sens';
+  const slider = document.createElement('input');
+  slider.type = 'range'; slider.min = '0.2'; slider.max = '1.2'; slider.step = '0.05';
+  slider.value = String(sensitivity.get(def.id) ?? DEFAULT_THRESHOLD);
+  slider.oninput = () => { sensitivity.set(def.id, parseFloat(slider.value)); };
+  sens.append(document.createTextNode('strict'), slider, document.createTextNode('loose'));
+  card.append(sens);
+}
+
 function activationBadge(def: CardDef): string {
   const choice = choiceFor(def);
   if (choice === 'custom') return hasTemplate(def.id) ? 'custom' : 'record…';
+  if (choice === 'default') return 'auto';
   return GESTURE_PRESETS[choice].emoji;
 }
 
@@ -264,8 +313,11 @@ function renderCards() {
     const icon = document.createElement('span'); icon.className = 'icon'; icon.textContent = def.icon;
     const name = document.createElement('span'); name.className = 'name'; name.textContent = def.name;
     const badge = document.createElement('span'); badge.className = 'badge';
-    if (!def.bindable) { badge.classList.add('auto'); badge.textContent = 'auto'; }
-    else { badge.classList.add('set'); badge.textContent = activationBadge(def); }
+    if (!def.bindable) {
+      badge.classList.add('auto');
+      badge.textContent =
+        def.customTrigger && getChoice(def.id, 'default') === 'custom' && hasTemplate(def.id) ? '✎' : 'auto';
+    } else { badge.classList.add('set'); badge.textContent = activationBadge(def); }
     top.append(icon, name, badge, enableSwitch(def));
 
     const desc = document.createElement('div');
@@ -298,8 +350,8 @@ function renderCards() {
       select.onchange = () => {
         const val = select.value as GestureChoice;
         if (val === 'custom') {
-          recordCustom(def.id); // saves choice on success, reverts the select on failure
-        } else {
+          recordCustom(def); // saves choice on success, reverts the select on failure
+        } else if (val !== 'default') {
           saveChoice(def.id, val);
           rebuildBindings();
           renderCards();
@@ -310,28 +362,40 @@ function renderCards() {
       card.append(actRow);
 
       // custom-only controls: re-record, clear, sensitivity
-      if (choice === 'custom') {
-        const set = hasTemplate(def.id);
-        const row = document.createElement('div');
-        row.className = 'row';
-        const rec = button(set ? '↻ Re-record' : '🎯 Record', () => recordCustom(def.id));
-        rec.className = 'primary';
-        const clr = button('✕', () => clearCustom(def.id));
-        clr.className = 'icon-btn';
-        clr.title = 'Clear custom gesture';
-        clr.disabled = !set;
-        row.append(rec, clr);
-        card.append(row);
+      if (choice === 'custom') customControlsRow(def, card);
+    }
 
-        const sens = document.createElement('div');
-        sens.className = 'sens';
-        const slider = document.createElement('input');
-        slider.type = 'range'; slider.min = '0.2'; slider.max = '1.2'; slider.step = '0.05';
-        slider.value = String(sensitivity.get(def.id) ?? DEFAULT_THRESHOLD);
-        slider.oninput = () => { sensitivity.set(def.id, parseFloat(slider.value)); };
-        sens.append(document.createTextNode('strict'), slider, document.createTextNode('loose'));
-        card.append(sens);
-      }
+    if (def.customTrigger) {
+      const choice = getChoice(def.id, 'default');
+
+      const row = document.createElement('div');
+      row.className = 'row';
+      const label = document.createElement('span');
+      label.className = 'field-label';
+      label.textContent = 'Trigger';
+      const select = document.createElement('select');
+      const defOpt = document.createElement('option');
+      defOpt.value = 'default';
+      defOpt.textContent = def.customTrigger;
+      const customOpt = document.createElement('option');
+      customOpt.value = 'custom';
+      customOpt.textContent = '✎  Custom (record)…';
+      select.append(defOpt, customOpt);
+      select.value = choice === 'custom' ? 'custom' : 'default';
+      select.onchange = () => {
+        if (select.value === 'custom') {
+          recordCustom(def); // saves choice on success; renderCards reverts on cancel
+        } else {
+          saveChoice(def.id, 'default');
+          pushCustomTriggers();
+          renderCards();
+          setState(`${def.name}: default trigger`);
+        }
+      };
+      row.append(label, select);
+      card.append(row);
+
+      if (choice === 'custom') customControlsRow(def, card);
     }
 
     if (def.extra) {
@@ -346,32 +410,35 @@ function renderCards() {
 }
 
 // ---- actions ----
-async function recordCustom(effectId: string) {
+async function recordCustom(def: CardDef) {
   if (!running) { setState('press start first'); renderCards(); return; }
-  compositor?.stop();
+  if (recorder.isOpen) return;
+
+  const prevShow = compositor ? compositor.showLandmarks : false;
+  if (compositor) compositor.showLandmarks = true; // see what's being tracked
   try {
-    for (let n = 3; n >= 1; n--) {
-      setState(`recording in ${n}…`);
-      await countdown(1, () => {});
+    const template = await recorder.run(flowFor(def));
+    if (template) {
+      saveTemplate(template);
+      saveChoice(def.id, 'custom');
+      setState('custom gesture saved ✓');
+    } else {
+      setState('recording cancelled');
     }
-    setState('hold your gesture…');
-    await calibrate(effectId, camera, tracker);
-    saveChoice(effectId, 'custom');
-    setState('custom gesture saved ✓');
-  } catch (err) {
-    setState((err as Error).message);
   } finally {
+    if (compositor) compositor.showLandmarks = prevShow;
+    pushCustomTriggers();
     rebuildBindings();
     renderCards();
-    compositor?.start();
   }
 }
 
 function clearCustom(effectId: string) {
   removeTemplate(effectId);
-  // revert to this effect's default preset
-  const def = BINDABLE.find(d => d.id === effectId);
-  if (def?.defaultGesture) saveChoice(effectId, def.defaultGesture);
+  const def = CARDS.find(d => d.id === effectId);
+  if (def?.bindable && def.defaultGesture) saveChoice(effectId, def.defaultGesture);
+  else if (def?.customTrigger) saveChoice(effectId, 'default');
+  pushCustomTriggers();
   rebuildBindings();
   renderCards();
   setState('custom gesture cleared');
@@ -381,6 +448,7 @@ function resetAll() {
   clearTemplates();
   localStorage.removeItem('cammods.bindings');
   rebuildBindings();
+  pushCustomTriggers();
   renderCards();
   setState('reset to defaults');
 }
@@ -405,6 +473,7 @@ function doImport(file: File) {
     try {
       importTemplates(txt);
       rebuildBindings();
+      pushCustomTriggers();
       renderCards();
       setState('gestures imported');
     } catch (err) {
@@ -425,6 +494,7 @@ async function start() {
     await tracker.init();
     if (!compositor) {
       const comp = new PixiCompositor(camera, tracker, faceTracker, engine, effects, {
+        onHands: hands => { if (recorder.isOpen) recorder.feedHands(hands); },
         onFrame: (hand, fired, active) => {
           const now = performance.now();
           if (lastFrameTime) {
@@ -471,6 +541,7 @@ async function start() {
 }
 
 function stop() {
+  if (recorder.isOpen) recorder.cancel();
   compositor?.stop();
   if (compositor) compositor.trackFace = false;
   camera.stop();
@@ -544,6 +615,7 @@ window.addEventListener('keydown', e => {
 // ---- boot ----
 hintEl.textContent = 'Pick a distinct activation pose per effect. Capture in OBS → Virtual Camera for Zoom/Meet.';
 rebuildBindings();
+pushCustomTriggers();
 renderCards();
 renderGlobals();
 
