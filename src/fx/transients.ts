@@ -26,6 +26,7 @@ export class TransientFx {
     if (this.ripples.length >= MAX_RIPPLES) {
       const old = this.ripples.shift()!;
       removeFilter(this.world, old.f);
+      old.f.destroy();
     }
     const f = new ShockwaveFilter({
       center: { x, y },
@@ -59,14 +60,14 @@ export class TransientFx {
     this.ripples = this.ripples.filter(r => {
       r.t += dt;
       r.f.time = r.t;
-      if (r.t >= r.dur) { removeFilter(this.world, r.f); return false; }
+      if (r.t >= r.dur) { removeFilter(this.world, r.f); r.f.destroy(); return false; }
       return true;
     });
     this.blurs = this.blurs.filter(b => {
       b.t += dt;
       const k = 1 - b.t / b.dur;
       b.f.strength = b.strength * k * k;
-      if (b.t >= b.dur) { removeFilter(this.world, b.f); return false; }
+      if (b.t >= b.dur) { removeFilter(this.world, b.f); b.f.destroy(); return false; }
       return true;
     });
     this.flashes = this.flashes.filter(f => {
@@ -79,8 +80,8 @@ export class TransientFx {
   }
 
   clear(): void {
-    for (const r of this.ripples) removeFilter(this.world, r.f);
-    for (const b of this.blurs) removeFilter(this.world, b.f);
+    for (const r of this.ripples) { removeFilter(this.world, r.f); r.f.destroy(); }
+    for (const b of this.blurs) { removeFilter(this.world, b.f); b.f.destroy(); }
     for (const f of this.flashes) { this.screen.removeChild(f.s); f.s.destroy(); }
     this.ripples = []; this.blurs = []; this.flashes = [];
   }
