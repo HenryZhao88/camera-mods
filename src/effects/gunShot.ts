@@ -1,9 +1,10 @@
 import { Container, Sprite } from 'pixi.js';
 import { FxParticles } from '../fx/particles';
 import { GunCore } from './gunCore';
+import { StagedTrigger } from '../gesture/customTriggers';
 import { playBang } from '../fx/sfx';
 import { fingersUp } from '../gesture/handGestures';
-import type { Effect, EffectStage, HandLandmarks, RenderContext } from '../types';
+import type { Effect, EffectStage, HandLandmarks, RenderContext, StagedTemplate } from '../types';
 
 const FLASH_SECONDS = 0.09;
 
@@ -15,6 +16,16 @@ export class GunShot implements Effect {
   mode = 'oneshot' as const;
   enabled = true;
   private cores: Record<'Left' | 'Right', GunCore> = { Left: new GunCore(), Right: new GunCore() };
+  // Custom ready->fire trigger; when set it REPLACES the built-in finger-gun
+  // pose logic (per hand — dual wield works in both modes).
+  private staged: Record<'Left' | 'Right', StagedTrigger> | null = null;
+
+  setCustomTrigger(t: StagedTemplate | null, getThreshold: () => number = () => 0.6): void {
+    this.staged = t
+      ? { Left: new StagedTrigger(t, getThreshold), Right: new StagedTrigger(t, getThreshold) }
+      : null;
+  }
+
   private mounted = false;
   private stage: EffectStage | null = null;
   private view = new Container();
@@ -50,6 +61,7 @@ export class GunShot implements Effect {
   isActive(): boolean { return this.flash > 0 || (this.ps?.count ?? 0) > 0 || (this.smoke?.count ?? 0) > 0; }
   reset(): void {
     this.flash = -1; this.cores.Left.reset(); this.cores.Right.reset();
+    if (this.staged) { this.staged.Left.reset(); this.staged.Right.reset(); }
     this.ps?.clear(); this.smoke?.clear();
     this.hideFlash();
   }
@@ -64,16 +76,22 @@ export class GunShot implements Effect {
       for (const hd of ctx.hands) {
         seen.add(hd.handedness);
         const lm = hd.landmarks;
-        const f = fingersUp(lm);
-        const isGun = f[1] && !f[2] && !f[3] && !f[4];
-        if (this.cores[hd.handedness].step({ isGun, thumbUp: f[0] }, ctx.now)) this.shoot(lm, ctx);
+        if (this.staged) {
+          if (this.staged[hd.handedness].step(lm, ctx.now)) this.shoot(lm, ctx);
+        } else {
+          const f = fingersUp(lm);
+          const isGun = f[1] && !f[2] && !f[3] && !f[4];
+          if (this.cores[hd.handedness].step({ isGun, thumbUp: f[0] }, ctx.now)) this.shoot(lm, ctx);
+        }
       }
       for (const side of ['Left', 'Right'] as const) {
-        if (!seen.has(side)) this.cores[side].step(null, ctx.now);
+        if (!seen.has(side)) { this.cores[side].step(null, ctx.now); this.staged?.[side].step(null, ctx.now); }
       }
     } else {
-      this.cores.Left.step(null, ctx.now);
-      this.cores.Right.step(null, ctx.now);
+      for (const side of ['Left', 'Right'] as const) {
+        this.cores[side].step(null, ctx.now);
+        this.staged?.[side].step(null, ctx.now);
+      }
     }
 
     if (this.mounted) this.syncFlash();

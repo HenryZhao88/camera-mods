@@ -1,9 +1,10 @@
 import { Container, Sprite } from 'pixi.js';
 import { FxParticles } from '../fx/particles';
 import { BeamCore, type BeamFrame } from './beamCore';
+import { matchTwoHand } from '../gesture/customTriggers';
 import { chargeStart, chargeLevel, chargeCancel, beamFire } from '../fx/sfx';
 import { fingersUp } from '../gesture/handGestures';
-import type { Effect, EffectStage, HandResult, RenderContext } from '../types';
+import type { Effect, EffectStage, HandResult, RenderContext, TwoHandTemplate } from '../types';
 
 // Loose on purpose: occluded/jittery two-hand tracking under-measures hand
 // size, so "near each other" has to count as together.
@@ -28,6 +29,15 @@ export class EnergyBeam implements Effect {
   id = 'energy-beam';
   mode = 'toggle' as const; // unused by the driver; self-driven
   enabled = true;
+  // Custom charge pose; when set it replaces the built-in palms-together check.
+  private chargeTpl: TwoHandTemplate | null = null;
+  private chargeThreshold: () => number = () => 0.6;
+
+  setCustomCharge(t: TwoHandTemplate | null, getThreshold: () => number = () => 0.6): void {
+    this.chargeTpl = t;
+    this.chargeThreshold = getThreshold;
+  }
+
   private core = new BeamCore();
   private mounted = false;
   private stage: EffectStage | null = null;
@@ -77,7 +87,9 @@ export class EnergyBeam implements Effect {
         a.landmarks[0].x - b.landmarks[0].x,
         a.landmarks[0].y - b.landmarks[0].y,
       );
-      const togetherNow = openish(a) && openish(b) && wristDist < PALMS_DIST_FACTOR * avg;
+      const togetherNow = this.chargeTpl
+        ? matchTwoHand(ctx.hands, this.chargeTpl, this.chargeThreshold())
+        : openish(a) && openish(b) && wristDist < PALMS_DIST_FACTOR * avg;
       frame = {
         palmsTogether: togetherNow,
         avgHandScale: avg,

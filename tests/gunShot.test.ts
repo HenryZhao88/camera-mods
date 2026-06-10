@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { GunShot } from '../src/effects/gunShot';
-import type { HandLandmarks, HandResult, RenderContext } from '../src/types';
+import { normalizeLandmarks } from '../src/gesture/normalize';
+import type { HandLandmarks, HandResult, RenderContext, StagedTemplate } from '../src/types';
 
 function setFinger(lm: HandLandmarks, joints: [number, number, number], col: number, up: boolean) {
   const [a, b, c] = joints;
@@ -68,6 +69,44 @@ describe('GunShot', () => {
     for (let i = 0; i < 200; i++) g.update(1 / 60, mk(fist, R(true), 200 + i * 16));
     expect(g.isActive()).toBe(false);           // proves left's shot is fully gone
     g.update(1 / 60, mk(fist, R(false), 5000)); // ONLY the right hand fires now
+    expect(g.isActive()).toBe(true);
+  });
+
+  it('custom staged trigger replaces the built-in finger gun', () => {
+    const g = new GunShot();
+    // custom: READY = open-ish flat hand, FIRE = the gun pose itself
+    const ready: HandLandmarks = Array.from({ length: 21 }, (_, i) => ({ x: i * 0.01, y: 0, z: 0 }));
+    ready[0] = { x: 0, y: 0.1, z: 0 }; ready[9] = { x: 0, y: -0.1, z: 0 };
+    const fire = gunHand(false);
+    const tpl: StagedTemplate = {
+      kind: 'stages', effectId: 'gun-shot',
+      stages: [normalizeLandmarks(ready), normalizeLandmarks(fire)],
+      createdAt: 'now',
+    };
+    g.setCustomTrigger(tpl, () => 0.6);
+
+    // built-in cock (thumb-up gun) must NOT arm the custom trigger
+    g.update(1 / 60, ctx(gunHand(true), 0));
+    g.update(1 / 60, ctx(gunHand(false), 100));
+    expect(g.isActive()).toBe(false);
+
+    // custom ready -> fire fires
+    g.update(1 / 60, ctx(ready, 500));
+    g.update(1 / 60, ctx(fire, 600));
+    expect(g.isActive()).toBe(true);
+  });
+
+  it('clearing the custom trigger restores the built-in', () => {
+    const g = new GunShot();
+    const tpl: StagedTemplate = {
+      kind: 'stages', effectId: 'gun-shot',
+      stages: [normalizeLandmarks(gunHand(true)), normalizeLandmarks(gunHand(false))],
+      createdAt: 'now',
+    };
+    g.setCustomTrigger(tpl, () => 0.6);
+    g.setCustomTrigger(null);
+    g.update(1 / 60, ctx(gunHand(true), 0));
+    g.update(1 / 60, ctx(gunHand(false), 100));
     expect(g.isActive()).toBe(true);
   });
 });
