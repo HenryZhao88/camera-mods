@@ -96,6 +96,21 @@ describe('GunShot', () => {
     expect(g.isActive()).toBe(true);
   });
 
+  it('a cock latched before switching to custom cannot fire after switching back', () => {
+    const g = new GunShot();
+    g.update(1 / 60, ctx(gunHand(true), 0)); // built-in: cocked
+    const tpl: StagedTemplate = {
+      kind: 'stages', effectId: 'gun-shot',
+      stages: [normalizeLandmarks(gunHand(true)), normalizeLandmarks(gunHand(false))],
+      createdAt: 'now',
+    };
+    g.setCustomTrigger(tpl, () => 0.05); // strict threshold: poses won't match it
+    g.update(1 / 60, ctx(gunHand(true), 50));
+    g.setCustomTrigger(null);                   // back to built-in
+    g.update(1 / 60, ctx(gunHand(false), 100)); // thumb down WITHOUT a fresh cock
+    expect(g.isActive()).toBe(false);           // stale latch must not fire
+  });
+
   it('clearing the custom trigger restores the built-in', () => {
     const g = new GunShot();
     const tpl: StagedTemplate = {

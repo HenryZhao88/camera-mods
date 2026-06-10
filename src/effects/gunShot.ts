@@ -21,6 +21,10 @@ export class GunShot implements Effect {
   private staged: Record<'Left' | 'Right', StagedTrigger> | null = null;
 
   setCustomTrigger(t: StagedTemplate | null, getThreshold: () => number = () => 0.6): void {
+    // The inactive path's machines aren't stepped while the other is in use —
+    // clear both so no stale cocked/armed latch survives a trigger switch.
+    this.cores.Left.reset();
+    this.cores.Right.reset();
     this.staged = t
       ? { Left: new StagedTrigger(t, getThreshold), Right: new StagedTrigger(t, getThreshold) }
       : null;
