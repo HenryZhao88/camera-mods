@@ -163,7 +163,9 @@ export class PixiCompositor {
     for (const e of this.effects) e.update(dt, ctx);
 
     this.overlayGfx.clear();
-    if (this.showLandmarks && hand) drawHandSkeleton(this.overlayGfx, hand.landmarks, w, h);
+    if (this.showLandmarks) {
+      for (const hd of hands) drawHandSkeleton(this.overlayGfx, hd.landmarks, w, h);
+    }
 
     this.shake.update(dt);
     const off = this.shake.offset();

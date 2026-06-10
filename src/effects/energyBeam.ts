@@ -5,7 +5,9 @@ import { chargeStart, chargeLevel, chargeCancel, beamFire } from '../fx/sfx';
 import { fingersUp } from '../gesture/handGestures';
 import type { Effect, EffectStage, HandResult, RenderContext } from '../types';
 
-const PALMS_DIST_FACTOR = 1.6; // wrists closer than this x avg hand size = together
+// Loose on purpose: occluded/jittery two-hand tracking under-measures hand
+// size, so "near each other" has to count as together.
+const PALMS_DIST_FACTOR = 2.2; // wrists closer than this x avg hand size = together
 const CORE_TINTS = [0xffffff, 0xbfe8ff, 0x7fc8ff];
 
 function handScale(h: HandResult): number {
@@ -14,8 +16,10 @@ function handScale(h: HandResult): number {
 }
 
 function openish(h: HandResult): boolean {
+  // >=2 (not >=3): pressed-together palms occlude fingers and fingersUp gets
+  // flaky — this only needs to exclude fists, not be a precise "open hand".
   const f = fingersUp(h.landmarks);
-  return (f[1] ? 1 : 0) + (f[2] ? 1 : 0) + (f[3] ? 1 : 0) + (f[4] ? 1 : 0) >= 3;
+  return (f[1] ? 1 : 0) + (f[2] ? 1 : 0) + (f[3] ? 1 : 0) + (f[4] ? 1 : 0) >= 2;
 }
 
 // Two-hand Kamehameha: palms together to charge an orb, thrust at the camera

@@ -28,9 +28,11 @@ export class HandTracker {
       baseOptions: { modelAssetPath: MODEL_URL, delegate },
       runningMode: 'VIDEO',
       numHands: 2,
-      minHandDetectionConfidence: 0.7,
-      minHandPresenceConfidence: 0.7,
-      minTrackingConfidence: 0.6,
+      // High enough to ignore faces/background clutter, but with headroom for
+      // two-hand poses (palms together occlude each other and tank confidence).
+      minHandDetectionConfidence: 0.6,
+      minHandPresenceConfidence: 0.6,
+      minTrackingConfidence: 0.5,
     });
   }
 

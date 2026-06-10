@@ -31,12 +31,35 @@ describe('BeamCore', () => {
     expect(c.charge).toBe(1);
   });
 
-  it('drains at 2x speed when the pose breaks, returning to idle at 0', () => {
+  it('drains at 2x speed when the pose breaks (after the grace window), returning to idle at 0', () => {
     const c = new BeamCore();
     let t = charge(c, 0.6);
-    for (let i = 0; i < 36; i++) { t += 1000 / 60; c.step(APART, 1 / 60, t); } // 0.6s drain
+    // 1.1s of broken pose: 0.35s grace + ~0.3s drain, with margin
+    for (let i = 0; i < 66; i++) { t += 1000 / 60; c.step(APART, 1 / 60, t); }
     expect(c.charge).toBe(0);
     expect(c.state).toBe('idle');
+  });
+
+  it('holds charge through brief tracking dropouts (grace)', () => {
+    const c = new BeamCore();
+    let t = charge(c, 0.7); // charge ~0.58
+    const before = c.charge;
+    for (let i = 0; i < 15; i++) { t += 1000 / 60; c.step(null, 1 / 60, t); } // 0.25s < grace
+    expect(c.state).toBe('charging');
+    expect(c.charge).toBeCloseTo(before, 5); // held, not drained
+    t += 1000 / 60;
+    c.step(together(), 1 / 60, t); // pose reacquired: still charging, charge resumes
+    expect(c.state).toBe('charging');
+    expect(c.charge).toBeGreaterThan(before);
+  });
+
+  it('fires on a thrust that straddles a tracking dropout', () => {
+    const c = new BeamCore();
+    let t = charge(c, 0.7, 0, 0.2); // charge ~0.58 at scale 0.2
+    for (let i = 0; i < 8; i++) { t += 1000 / 60; c.step(null, 1 / 60, t); } // 0.13s dropout mid-push
+    t += 1000 / 60;
+    c.step(together(0.24), 1 / 60, t); // hands reacquired 20% bigger
+    expect(c.state).toBe('firing');
   });
 
   it('fires on a >=18% hand-scale thrust within 180ms once charge >= 0.35', () => {
