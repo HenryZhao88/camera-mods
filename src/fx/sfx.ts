@@ -108,4 +108,80 @@ export function stopShieldHum(): void {
   humGain = null;
 }
 
+// Rising filtered saw while charging; cut off on cancel; big boom on fire.
+let chargeOsc: OscillatorNode | null = null;
+let chargeGain: GainNode | null = null;
+let chargeFilter: BiquadFilterNode | null = null;
+
+export function chargeStart(): void {
+  const ctx = ac();
+  if (!ctx || chargeOsc) return;
+  chargeOsc = ctx.createOscillator();
+  chargeOsc.type = 'sawtooth';
+  chargeOsc.frequency.value = 70;
+  chargeFilter = ctx.createBiquadFilter();
+  chargeFilter.type = 'lowpass';
+  chargeFilter.frequency.value = 300;
+  chargeGain = ctx.createGain();
+  chargeGain.gain.value = 0.0001;
+  chargeOsc.connect(chargeFilter).connect(chargeGain).connect(ctx.destination);
+  chargeOsc.start();
+}
+
+export function chargeLevel(level: number): void {
+  const ctx = ac();
+  if (!ctx || !chargeOsc || !chargeGain || !chargeFilter) return;
+  const now = ctx.currentTime;
+  chargeOsc.frequency.setTargetAtTime(70 + 240 * level, now, 0.05);
+  chargeFilter.frequency.setTargetAtTime(300 + 2200 * level * level, now, 0.05);
+  const trem = 1 + 0.3 * Math.sin(now * (4 + 14 * level) * Math.PI * 2);
+  chargeGain.gain.setTargetAtTime(0.10 * level * trem, now, 0.05);
+}
+
+export function chargeCancel(): void {
+  const ctx = ac();
+  if (ctx && chargeGain && chargeOsc) {
+    const now = ctx.currentTime;
+    chargeGain.gain.cancelScheduledValues(now);
+    chargeGain.gain.setTargetAtTime(0.0001, now, 0.06);
+    chargeOsc.stop(now + 0.3);
+  }
+  chargeOsc = null; chargeGain = null; chargeFilter = null;
+}
+
+// The release: noise blast + 45Hz swell + ~1s rumble tail.
+export function beamFire(): void {
+  chargeCancel();
+  const ctx = ac();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const dur = 1.1;
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 1.6);
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(4000, now);
+  lp.frequency.exponentialRampToValueAtTime(250, now + dur);
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.8, now);
+  ng.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  noise.connect(lp).connect(ng).connect(ctx.destination);
+  noise.start(now);
+
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(45, now);
+  const og = ctx.createGain();
+  og.gain.setValueAtTime(0.0001, now);
+  og.gain.exponentialRampToValueAtTime(0.55, now + 0.1);
+  og.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+  osc.connect(og).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 1.25);
+}
+
 function audioCtxOf(): AudioContext | null { return audioCtx; }
