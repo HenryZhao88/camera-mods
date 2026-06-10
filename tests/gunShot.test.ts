@@ -59,7 +59,15 @@ describe('GunShot', () => {
     g.update(1 / 60, mk(L(true), R(true), 0));     // both cocked
     g.update(1 / 60, mk(L(false), R(true), 100));  // left fires
     expect(g.isActive()).toBe(true);
-    g.update(1 / 60, mk(L(false), R(false), 120)); // right fires immediately after
+
+    // Drain the LEFT shot completely so residual visuals can't mask the right hand.
+    const fist: HandResult = {
+      landmarks: Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0 })),
+      handedness: 'Left',
+    };
+    for (let i = 0; i < 200; i++) g.update(1 / 60, mk(fist, R(true), 200 + i * 16));
+    expect(g.isActive()).toBe(false);           // proves left's shot is fully gone
+    g.update(1 / 60, mk(fist, R(false), 5000)); // ONLY the right hand fires now
     expect(g.isActive()).toBe(true);
   });
 });
