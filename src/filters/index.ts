@@ -16,10 +16,13 @@ export interface FilterRig {
   destroy(): void;
 }
 
-// Rigs are added by later tasks (glitch/crt in Task 7, cyberpunk in Task 8).
+import { buildGlitchRig } from './glitch';
+import { buildCrtRig } from './crt';
+
 export function buildFilterRig(id: ScreenFilter): FilterRig | null {
   switch (id) {
-    default:
-      return null;
+    case 'glitch': return buildGlitchRig();
+    case 'crt': return buildCrtRig();
+    default: return null;
   }
 }

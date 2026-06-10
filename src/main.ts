@@ -526,6 +526,11 @@ renderGlobals();
 // and auto-start the camera with ?autostart=1 (no Interact-dialog clicking).
 const params = new URLSearchParams(location.search);
 if (params.get('clean') !== null) enterClean();
+const filterParam = params.get('filter') as ScreenFilter | null;
+if (filterParam && SCREEN_FILTERS.some(f => f.id === filterParam)) {
+  currentScreenFilter = filterParam;
+  screenFxSelect.value = filterParam;
+}
 const boot = params.get('fakecam') !== null
   ? import('./devFakeCam').then(m => m.installFakeCamera())
   : Promise.resolve();
