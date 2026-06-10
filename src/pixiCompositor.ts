@@ -88,7 +88,7 @@ export class PixiCompositor {
       screen: this.screenLayer,
       fx: { shake: this.shake, transients: this.transients, textures: this.textures },
     };
-    for (const e of this.effects) e.init?.(stage);
+    for (const e of this.effects) e.init(stage);
 
     this.applyFilter();
     this.inited = true;

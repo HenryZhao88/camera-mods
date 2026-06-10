@@ -48,7 +48,7 @@ export interface EffectStage {
 export interface Effect {
   id: string;
   mode: EffectMode;
-  init?(stage: EffectStage): void; // mount display objects (Task 6 makes this required)
+  init(stage: EffectStage): void; // mount display objects (called once by the compositor)
   start(): void;
   stop(): void;
   update(dt: number, ctx: RenderContext): void; // mutate display objects
