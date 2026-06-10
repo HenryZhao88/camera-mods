@@ -128,9 +128,12 @@ export class RecorderWizard {
         : "Couldn't see your hand — try again";
       this.retryBtn.classList.remove('hidden');
       const retry = await new Promise<boolean>(resolve => {
-        this.retryBtn.onclick = () => resolve(true);
+        let settled = false;
+        const settle = (v: boolean) => { if (!settled) { settled = true; resolve(v); } };
+        this.retryBtn.onclick = () => settle(true);
         const poll = () => {
-          if (this.cancelled) return resolve(false);
+          if (settled) return; // stop the timer chain once retry was clicked
+          if (this.cancelled) return settle(false);
           setTimeout(poll, 100);
         };
         poll();
