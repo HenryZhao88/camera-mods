@@ -18,3 +18,10 @@
   };
   Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: fake });
 })();
+
+// jsdom has no canvas implementation; pixi probes getContext at import time and
+// jsdom prints a noisy "Not implemented" error for every test file that imports
+// pixi. Returning null matches jsdom's actual behavior, minus the noise.
+if (typeof HTMLCanvasElement !== 'undefined') {
+  HTMLCanvasElement.prototype.getContext = (() => null) as typeof HTMLCanvasElement.prototype.getContext;
+}
