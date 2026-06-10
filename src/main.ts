@@ -525,4 +525,7 @@ renderGlobals();
 // and auto-start the camera with ?autostart=1 (no Interact-dialog clicking).
 const params = new URLSearchParams(location.search);
 if (params.get('clean') !== null) enterClean();
-if (params.get('autostart') !== null) void start();
+const boot = params.get('fakecam') !== null
+  ? import('./devFakeCam').then(m => m.installFakeCamera())
+  : Promise.resolve();
+if (params.get('autostart') !== null) void boot.then(() => start());

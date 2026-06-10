@@ -1,6 +1,8 @@
 import { HandLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import type { HandResult, Handedness } from './types';
 
+type WasmFileset = Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>>;
+
 const WASM_BASE =
   'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
 const MODEL_URL =
@@ -11,12 +13,19 @@ export class HandTracker {
 
   async init(): Promise<void> {
     const fileset = await FilesetResolver.forVisionTasks(WASM_BASE);
-    this.landmarker = await HandLandmarker.createFromOptions(fileset, {
-      baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
+    try {
+      this.landmarker = await this.create(fileset, 'GPU');
+    } catch {
+      // SwiftShader/headless and some GPUs can't host the GPU delegate
+      this.landmarker = await this.create(fileset, 'CPU');
+    }
+  }
+
+  private create(fileset: WasmFileset, delegate: 'GPU' | 'CPU'): Promise<HandLandmarker> {
+    return HandLandmarker.createFromOptions(fileset, {
+      baseOptions: { modelAssetPath: MODEL_URL, delegate },
       runningMode: 'VIDEO',
       numHands: 1,
-      // Higher confidence so it only locks onto an actual hand, not faces,
-      // background clutter, or other hand-ish shapes.
       minHandDetectionConfidence: 0.7,
       minHandPresenceConfidence: 0.7,
       minTrackingConfidence: 0.6,
