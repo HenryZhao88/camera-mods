@@ -402,7 +402,7 @@ async function start() {
     setState('loading hand model…');
     await tracker.init();
     if (!compositor) {
-      compositor = new PixiCompositor(camera, tracker, faceTracker, engine, effects, {
+      const comp = new PixiCompositor(camera, tracker, faceTracker, engine, effects, {
         onFrame: (hand, fired, active) => {
           const now = performance.now();
           if (lastFrameTime) {
@@ -427,7 +427,8 @@ async function start() {
         },
       });
       setState('starting renderer…');
-      await compositor.init(canvas);
+      await comp.init(canvas);
+      compositor = comp;
     }
     compositor.showLandmarks = showPoints.checked;
     compositor.screenFilter = currentScreenFilter;

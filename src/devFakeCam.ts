@@ -24,6 +24,13 @@ export function installFakeCamera(): void {
     c.fillText('FAKE CAM', 480, 380);
   }, 1000 / 30);
 
-  const stream = cv.captureStream(30);
-  navigator.mediaDevices.getUserMedia = () => Promise.resolve(stream);
+  let stream = cv.captureStream(30);
+  navigator.mediaDevices.getUserMedia = () => {
+    // camera.stop() ends the tracks; hand out a fresh capture if that happened
+    // (headless verification only ever starts once, but keep restart working).
+    if (stream.getVideoTracks().every(t => t.readyState === 'ended')) {
+      stream = cv.captureStream(30);
+    }
+    return Promise.resolve(stream);
+  };
 }

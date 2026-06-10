@@ -12,10 +12,12 @@ export class HandTracker {
   private landmarker: HandLandmarker | null = null;
 
   async init(): Promise<void> {
+    if (this.landmarker) return; // re-init on every Start would leak landmarkers
     const fileset = await FilesetResolver.forVisionTasks(WASM_BASE);
     try {
       this.landmarker = await this.create(fileset, 'GPU');
-    } catch {
+    } catch (err) {
+      console.warn('HandTracker: GPU delegate failed, falling back to CPU', err);
       // SwiftShader/headless and some GPUs can't host the GPU delegate
       this.landmarker = await this.create(fileset, 'CPU');
     }

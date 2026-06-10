@@ -33,6 +33,8 @@ export class PixiCompositor {
   private overlayGfx = new Graphics();
   private screenLayer = new Container(); // "on the lens": splats, flashes, dim grade
   private videoSprite: Sprite | null = null;
+  private vsW = 0;
+  private vsH = 0;
 
   private shake = new ScreenShake();
   private transients!: TransientFx;
@@ -106,6 +108,7 @@ export class PixiCompositor {
   }
 
   start(): void {
+    if (!this.inited) return;
     this.last = performance.now();
     const loop = (now: number) => {
       this.frame(now);
@@ -117,6 +120,7 @@ export class PixiCompositor {
   stop(): void { cancelAnimationFrame(this.raf); }
 
   private frame(now: number): void {
+    if (!this.inited) return;
     const dt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
 
@@ -127,8 +131,8 @@ export class PixiCompositor {
     }
 
     // Lazily (re)create the mirrored video sprite; recreate if camera dims changed.
-    if (this.videoSprite && (this.videoSprite.texture.width !== w || this.videoSprite.texture.height !== h)) {
-      this.videoSprite.destroy({ texture: true });
+    if (this.videoSprite && (this.vsW !== w || this.vsH !== h)) {
+      this.videoSprite.destroy({ texture: true, textureSource: true });
       this.videoSprite = null;
     }
     if (!this.videoSprite) {
@@ -136,9 +140,11 @@ export class PixiCompositor {
       this.videoSprite = new Sprite(tex);
       this.videoSprite.scale.x = -1; // mirrored selfie view
       this.world.addChildAt(this.videoSprite, 0);
+      this.vsW = w; this.vsH = h;
     }
     this.videoSprite.x = w;
-    this.videoSprite.texture.source.update(); // deterministic per-frame refresh
+    // backstop refresh (VideoSource autoUpdate covers steady state; this helps after stream rebinds)
+    this.videoSprite.texture.source.update();
 
     const hands = this.tracker.detect(this.camera.video, now);
     const hand = hands[0] ?? null;
