@@ -131,7 +131,7 @@ Now your gesture effects show up in the call. 🎉
 | "Camera access failed" | Click the camera icon in Chrome's address bar → Allow. Make sure no other app is using the webcam. |
 | "Loading hand model…" stuck | The hand model downloads from the internet on first run — check your connection and refresh. |
 | Recording times out ("Couldn't see your hand") | Make sure your hand (or both hands) is well-lit and fully in frame, then hit ↻ Retry. |
-| Effect won't trigger | Re-calibrate that gesture, or nudge its sensitivity slider toward **loose**. |
+| Effect won't trigger | Re-record that gesture, or nudge its sensitivity slider toward **loose**. |
 | Two effects fire at once | Their symbols are too similar — clear (✕) one and re-record a more distinct pose. |
 | Lights dim when I don't want them to | You made a fist — open your hand to fade back up, or untick **Enabled** on the Dim card. |
 | It seems to track non-hand objects | Detection confidence is tuned to ignore faces/background, but in busy scenes turn on **Show tracking points** to confirm, and keep your hand the clearest hand-shape in frame. |
