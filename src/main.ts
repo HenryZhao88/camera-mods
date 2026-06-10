@@ -18,6 +18,9 @@ import { PinchDraw } from './effects/pinchDraw';
 import { FireBreath } from './effects/fireBreath';
 import { LightningEyes } from './effects/lightningEyes';
 import { GunShot } from './effects/gunShot';
+import { EnergyShield } from './effects/energyShield';
+import { EnergyBeam } from './effects/energyBeam';
+import { WebShot } from './effects/webShot';
 import type { Effect } from './types';
 import { SCREEN_FILTERS, type ScreenFilter } from './filters';
 
@@ -45,6 +48,9 @@ const blast = new PalmBlast();
 const fire = new FireBreath();
 const eyes = new LightningEyes();
 const gun = new GunShot();
+const shield = new EnergyShield();
+const beam = new EnergyBeam();
+const web = new WebShot();
 let faceReady = false;
 
 // Face-tracked effects default off (a second ML model is heavy); the rest default on.
@@ -54,11 +60,12 @@ function effectDefaultEnabled(id: string): boolean { return !FACE_EFFECTS.has(id
 // self-driven effects toggled directly via their .enabled flag
 const selfDriven: Record<string, { enabled: boolean }> = {
   'dim-lights': dim, 'fire-breath': fire, 'lightning-eyes': eyes, 'gun-shot': gun,
+  'energy-beam': beam,
 };
 for (const [id, fx] of Object.entries(selfDriven)) fx.enabled = isEnabled(id, effectDefaultEnabled(id));
 
 // Render order (back to front): dim darkens first, glowing effects layer on top.
-const effects: Effect[] = [dim, lightning, blast, fire, eyes, gun, pinch];
+const effects: Effect[] = [dim, lightning, blast, fire, eyes, gun, shield, beam, web, pinch];
 const engine = new GestureEngine([], { cooldownMs: 800, exclusive: true });
 let compositor: PixiCompositor | null = null;
 let running = false;
@@ -90,6 +97,21 @@ const CARDS: CardDef[] = [
     desc: 'Hold the gesture to <b>draw neon lines</b> that follow your finger.',
     bindable: true, defaultGesture: 'pinch',
     extra: () => button('🧽 Clear lines', () => pinch.clear()),
+  },
+  {
+    id: 'energy-shield', icon: '🛡', name: 'Shield', color: '#66e0ff',
+    desc: 'A hex force-field materializes in front of your palm <b>while you hold</b> the gesture.',
+    bindable: true, defaultGesture: 'open',
+  },
+  {
+    id: 'web-shot', icon: '🕸', name: 'Web Shot', color: '#e8e8e8',
+    desc: 'Shoot a web <b>at the camera</b> — it splats on the lens and peels off after a few seconds.',
+    bindable: true, defaultGesture: 'rock',
+  },
+  {
+    id: 'energy-beam', icon: '🌀', name: 'Kamehameha', color: '#7fc8ff',
+    desc: 'Automatic — hold your <b>palms together</b> to charge, then <b>push at the camera</b> to fire.',
+    bindable: false,
   },
   {
     id: 'gun-shot', icon: '🔫', name: 'Finger Gun', color: '#ff5a5a',
@@ -420,7 +442,10 @@ async function start() {
               (id === 'dim-lights' && dim.isActive()) ||
               (id === 'fire-breath' && fire.isActive()) ||
               (id === 'lightning-eyes' && eyes.isActive()) ||
-              (id === 'gun-shot' && gun.isActive());
+              (id === 'gun-shot' && gun.isActive()) ||
+              (id === 'energy-beam' && beam.isActive()) ||
+              (id === 'energy-shield' && shield.isActive()) ||
+              (id === 'web-shot' && web.isActive());
             el.classList.toggle('active', lit);
           }
           handEl.textContent = hand ? '✋ hand' : 'no hand';

@@ -1,9 +1,10 @@
 # CamMods 🪄
 
-Turn hand gestures into real-time webcam effects. You calibrate your *own* hand
-symbols, then throw lightning, dim the room, set off explosions, or draw glowing
-neon lines in the air — just by making the gesture. Pipe it into Zoom / Meet /
-Discord with OBS Virtual Camera.
+Turn hand gestures into movie-grade webcam VFX, rendered on WebGL. You calibrate
+your *own* hand symbols, then throw branching lightning, raise an energy shield,
+charge a kamehameha at the lens, shoot webs at the camera, dual-wield finger guns,
+or draw glowing neon lines in the air. Pipe it into Zoom / Meet / Discord with OBS
+Virtual Camera.
 
 ---
 
@@ -44,7 +45,7 @@ selfie). The live dot turns green, and the status line shows hand detection + FP
 Click **■ Stop** any time to release the camera.
 
 ### Step 2 — Pick an activation pose per effect
-Three effects fire on a hand pose. Each card has an **"Activate" dropdown** — just
+Five effects fire on a hand pose. Each card has an **"Activate" dropdown** — just
 pick the pose you want from the built-in set:
 
 | Pose | | Pose | |
@@ -52,7 +53,7 @@ pick the pose you want from the built-in set:
 | ✋ Open hand | ✊ Fist | ✌️ Peace | ☝️ Point |
 | 🤏 Pinch | 🤘 Rock | 👍 Thumbs up | ✎ Custom (record your own) |
 
-Defaults: ⚡ Lightning = ✌️ Peace, 💥 Blast = ☝️ Point, ✏️ Draw = 🤏 Pinch.
+Defaults: ⚡ Lightning = ✌️ Peace, 💥 Blast = ☝️ Point, ✏️ Draw = 🤏 Pinch, 🛡 Shield = ✋ Open hand, 🕸 Web Shot = 🤘 Rock.
 Pick a *distinct* pose for each so they don't collide. Choices are **saved in the
 browser** and survive restarts.
 
@@ -67,15 +68,18 @@ sensitivity slider and a **✕** (clear) appear for custom gestures.
 Make an effect's pose and it fires; its card glows in the effect's color.
 - **Lightning** and **Draw** are *held* — they run while you hold the pose.
 - **Blast** is *one-shot* — fires once per pose.
-- **🔫 Finger Gun** is *automatic* (on by default) — make a finger gun (index out,
-  thumb up) and **drop your thumb** to fire: muzzle flash + bang sound.
+- **🛡 Shield** is *held* — a hex force-field shimmers in front of your palm.
+- **🕸 Web Shot** is *one-shot* — the web splats onto the lens and peels off ~5s later.
+- **🌀 Kamehameha** is *automatic* (on by default) — hold your **palms together** to
+  charge the orb, then **push toward the camera** to fire. Breaking the pose drains it.
+- **🔫 Finger Gun** is *automatic* (on by default) and **dual-wields** — make a finger gun (index out,
+  thumb up) and **drop your thumb** to fire: muzzle flash + bang sound. Two hands, two guns.
 - **🌙 Dim** is *automatic & gradual* — make a **fist** to fade the room down over
   ~1.5s, **open your hand** to fade it back up.
 - **👁️ Lightning Eyes** and **🔥 Fire Breath** are **off by default** (they use face
   tracking, which is heavier). Tick **Enabled** to try them — lightning crackles
   from your eyes / open your mouth wide to breathe fire.
-- **📺 Screen FX** (top of panel): apply a full-frame **Glitch** or **CRT / retro**
-  filter over everything.
+- **📺 Screen FX** (top of panel): full-frame **Glitch**, **CRT / retro**, or **Cyberpunk** shader filter over everything.
 - **🧽 Clear lines** (on the Draw card) wipes everything you've drawn.
 
 Only **one gesture effect fires at a time** — if a pose happens to match two
@@ -103,8 +107,7 @@ through OBS (free):
    in the panel (press **Esc** or **C** to exit). The window then shows only your
    camera + effects.
 3. In OBS, under **Sources**, click **+**:
-   - **Browser** source → URL `http://localhost:5173/?clean=1` (the `?clean=1`
-     deep-links straight into clean view — best for OBS), size 1280×720; **or**
+   - **Browser** source → URL `http://localhost:5173/?clean=1` (add `&filter=cyberpunk` etc. to lock a screen filter, `&autostart=1` to skip clicking Start), size 1280×720; **or**
    - **Window Capture** → pick the Chrome window (with Clean view on).
 4. Click **Start Virtual Camera** (bottom-right in OBS).
 5. In Zoom / Meet / Discord, open camera settings and choose
@@ -142,20 +145,27 @@ npm run build    # production build into dist/
 **Architecture** (pipeline):
 
 ```
-Webcam → HandTracker (MediaPipe) → GestureEngine → EffectDriver → Effects → Compositor → Canvas
-                                          ↑
-                                   Calibration + saved templates
+Webcam → HandTracker (MediaPipe, 2 hands) → GestureEngine → EffectDriver → Effects
+                                                                              ↓
+            PixiJS WebGL stage:  video sprite → effect layers → shake → screen layer → filter rig
 ```
 
 | Module | Responsibility |
 |--------|----------------|
 | `src/camera.ts` | Webcam capture |
-| `src/handTracker.ts` | MediaPipe Hand Landmarker wrapper (21 points/hand) |
+| `src/handTracker.ts` | MediaPipe Hand Landmarker wrapper (21 points/hand, 2 hands) |
 | `src/faceTracker.ts` | MediaPipe Face Landmarker wrapper (478 points/face) |
 | `src/facePose.ts` | Mouth openness/center/breath direction + eye centers (Fire, Lightning Eyes) |
-| `src/effects/lightningEyes.ts` | Electric arcs from the eyes (face) |
-| `src/effects/gunShot.ts` | Finger-gun fire: muzzle flash + sparks + WebAudio bang |
-| `src/screenFilters.ts` | Full-frame Glitch / CRT post-process (canvas-native) |
+| `src/pixiCompositor.ts` | WebGL stage, render loop, shake/transients/filter plumbing |
+| `src/fx/particleCore.ts` / `particles.ts` | Particle physics (pure) / sprite-pool presenter |
+| `src/fx/boltGen.ts` | Branching lightning geometry (pure, seeded) |
+| `src/fx/webGeometry.ts` | Spider-web geometry (pure, seeded) |
+| `src/fx/proceduralTextures.ts` | Generated glow/streak/vignette/hex/web textures |
+| `src/fx/shake.ts` / `transients.ts` | Screen shake / shockwave-zoomBlur-flash one-shots |
+| `src/fx/sfx.ts` | All WebAudio-synthesized sounds |
+| `src/filters/` | Screen-filter registry: Glitch v2, CRT v2, Cyberpunk |
+| `src/effects/beamCore.ts` / `gunCore.ts` | Pure state machines (charge/thrust, cock/fire) |
+| `src/effects/energyShield.ts` / `energyBeam.ts` / `webShot.ts` | The new cinematic effects |
 | `src/overlay.ts` | Hand-skeleton debug overlay |
 | `src/gesture/normalize.ts` | Translation/scale-invariant landmark normalization |
 | `src/gesture/distance.ts` | Pose similarity scoring |
@@ -167,22 +177,21 @@ Webcam → HandTracker (MediaPipe) → GestureEngine → EffectDriver → Effect
 | `src/gesture/templateStore.ts` | Custom-gesture persistence + export/import |
 | `src/calibration.ts` | Averaged gesture capture |
 | `src/effects/effectDriver.ts` | Maps gesture events → effect lifecycle (hold/toggle/oneshot) |
-| `src/effects/particleSystem.ts` | Shared particle utility |
 | `src/effects/dimLights.ts` | Self-driven gradual dim from hand openness (not calibrated) |
 | `src/effects/fireBreath.ts` | Mouth-driven fire particle stream (face tracking) |
+| `src/effects/lightningEyes.ts` | Electric arcs from the eyes (face) |
+| `src/effects/gunShot.ts` | Finger-gun fire: muzzle flash + sparks + WebAudio bang |
 | `src/effects/*.ts` | The other effects |
-| `src/compositor.ts` | Render loop: draws video + runs effects |
 | `src/main.ts` | Control-deck UI + wiring |
 
 Pure logic is unit-tested (Vitest); camera/tracking/rendering are verified live.
 
-**Stack:** Vite · TypeScript · MediaPipe Tasks Vision · Canvas 2D · Vitest.
+**Stack:** Vite · TypeScript · PixiJS (WebGL) · pixi-filters · MediaPipe Tasks Vision · Vitest.
 
 ---
 
 ## 7. Roadmap (v2 ideas)
 
 - Play an **mp4 video** as an effect.
-- True **WebGL pixel-warp** world effects (ripple, glitch, kaleidoscope).
 - Face/body filters, 3D objects, emoji spawns.
 - Adding a new effect = drop one file into `src/effects/` and register it in `main.ts`.
