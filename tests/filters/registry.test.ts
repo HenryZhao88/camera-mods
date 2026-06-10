@@ -8,22 +8,9 @@ describe('filter registry', () => {
 
   it('builds a live rig for every non-none filter', () => {
     for (const { id } of SCREEN_FILTERS) {
-      // GlitchFilter calls canvas.getContext('2d') at construction time (redraw()
-      // via refresh() via slices setter). jsdom returns null for getContext — skip
-      // that construction path here and rely on the headless screenshot for visual
-      // verification.
-      let rig: ReturnType<typeof buildFilterRig>;
-      try {
-        rig = buildFilterRig(id);
-      } catch {
-        // jsdom canvas limitation — acceptable for glitch rig; screenshots verify it.
-        continue;
-      }
+      const rig = buildFilterRig(id);
       if (id === 'none') {
         expect(rig).toBeNull();
-      } else if (id === 'cyberpunk') {
-        // rig lands in Task 8 — tolerate null until then
-        if (rig) { expect(rig.filters.length).toBeGreaterThan(0); rig.destroy(); }
       } else {
         expect(rig).not.toBeNull();
         expect(rig!.filters.length).toBeGreaterThan(0);

@@ -18,11 +18,13 @@ export interface FilterRig {
 
 import { buildGlitchRig } from './glitch';
 import { buildCrtRig } from './crt';
+import { buildCyberpunkRig } from './cyberpunk';
 
 export function buildFilterRig(id: ScreenFilter): FilterRig | null {
   switch (id) {
     case 'glitch': return buildGlitchRig();
     case 'crt': return buildCrtRig();
+    case 'cyberpunk': return buildCyberpunkRig();
     default: return null;
   }
 }

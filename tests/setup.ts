@@ -20,8 +20,27 @@
 })();
 
 // jsdom has no canvas implementation; pixi probes getContext at import time and
-// jsdom prints a noisy "Not implemented" error for every test file that imports
-// pixi. Returning null matches jsdom's actual behavior, minus the noise.
+// GlitchFilter draws its displacement map through a 2D context. A no-op 2D mock
+// keeps both quiet and lets filter rigs construct under jsdom. (WebGL stays null —
+// nothing in unit tests may render.)
 if (typeof HTMLCanvasElement !== 'undefined') {
-  HTMLCanvasElement.prototype.getContext = (() => null) as typeof HTMLCanvasElement.prototype.getContext;
+  const noop2d = () =>
+    new Proxy(
+      {},
+      {
+        get: (_t, prop) => {
+          if (prop === 'canvas') return undefined;
+          // gradients etc. also need method-bearing objects
+          return typeof prop === 'string' ? () => noop2dValue : undefined;
+        },
+        set: () => true,
+      },
+    );
+  const noop2dValue = new Proxy(function () {} as unknown as object, {
+    get: () => () => noop2dValue,
+    apply: () => noop2dValue,
+  });
+  HTMLCanvasElement.prototype.getContext = function (kind: string) {
+    return kind === '2d' ? (noop2d() as unknown as CanvasRenderingContext2D) : null;
+  } as typeof HTMLCanvasElement.prototype.getContext;
 }
