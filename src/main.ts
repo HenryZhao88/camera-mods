@@ -228,7 +228,7 @@ function rebuildBindings() {
     if (!isEnabled(def.id, true)) continue; // disabled effects don't match
     const choice = choiceFor(def);
     if (choice === 'custom') {
-      const t = loadTemplates().find(x => x.effectId === def.id);
+      const t = loadTemplates().find(x => x.effectId === def.id && x.kind === 'hand') as import('./types').HandTemplate | undefined;
       if (t) {
         bindings.push(customBinding(def.id, t.landmarks, () => sensitivity.get(def.id) ?? DEFAULT_THRESHOLD));
       }

@@ -14,12 +14,30 @@ export interface HandResult {
   handedness: Handedness;
 }
 
-export interface GestureTemplate {
+// Custom-gesture templates. All landmark arrays are ALREADY normalized via
+// normalizeLandmarks before storage — matchers never re-normalize templates.
+export interface HandTemplate {
+  kind: 'hand';
   effectId: string;
-  landmarks: HandLandmarks; // normalized via normalizeLandmarks
+  landmarks: HandLandmarks;
   handedness: Handedness;
   createdAt: string;
 }
+export interface TwoHandTemplate {
+  kind: 'two-hand';
+  effectId: string;
+  left: HandLandmarks;   // left-most hand ON SCREEN at record time (mirrored coords)
+  right: HandLandmarks;  // right-most
+  span: number;          // wrist-to-wrist distance / average hand size, at record time
+  createdAt: string;
+}
+export interface StagedTemplate {
+  kind: 'stages';
+  effectId: string;
+  stages: [HandLandmarks, HandLandmarks]; // [ready, fire]
+  createdAt: string;
+}
+export type GestureTemplate = HandTemplate | TwoHandTemplate | StagedTemplate;
 
 export interface FaceResult {
   landmarks: Landmark[]; // 478 FaceMesh points, 0..1, already mirrored for display

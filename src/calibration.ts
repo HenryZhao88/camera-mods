@@ -36,6 +36,7 @@ export async function calibrate(
   });
 
   const template: GestureTemplate = {
+    kind: 'hand',
     effectId, landmarks: avg, handedness, createdAt: new Date().toISOString(),
   };
   saveTemplate(template);
