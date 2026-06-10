@@ -45,3 +45,67 @@ export function playBang(): void {
   osc.start(now);
   osc.stop(now + 0.16);
 }
+
+// Soft sine swell for shield raise/lower; a very quiet hum loop while held.
+let humOsc: OscillatorNode | null = null;
+let humGain: GainNode | null = null;
+
+export function shieldUp(): void {
+  const ctx = ac();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(180, now);
+  osc.frequency.exponentialRampToValueAtTime(420, now + 0.22);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.exponentialRampToValueAtTime(0.25, now + 0.08);
+  g.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+  osc.connect(g).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.32);
+
+  if (!humOsc) {
+    humOsc = ctx.createOscillator();
+    humOsc.type = 'triangle';
+    humOsc.frequency.value = 96;
+    humGain = ctx.createGain();
+    humGain.gain.setValueAtTime(0.0001, now);
+    humGain.gain.exponentialRampToValueAtTime(0.05, now + 0.4);
+    humOsc.connect(humGain).connect(ctx.destination);
+    humOsc.start(now);
+  }
+}
+
+export function shieldDown(): void {
+  const ctx = ac();
+  if (ctx) {
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(380, now);
+    osc.frequency.exponentialRampToValueAtTime(140, now + 0.18);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.18, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.22);
+  }
+  stopShieldHum();
+}
+
+export function stopShieldHum(): void {
+  if (humOsc && humGain && audioCtxOf()) {
+    const now = audioCtxOf()!.currentTime;
+    humGain.gain.cancelScheduledValues(now);
+    humGain.gain.setValueAtTime(humGain.gain.value, now);
+    humGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+    humOsc.stop(now + 0.2);
+  }
+  humOsc = null;
+  humGain = null;
+}
+
+function audioCtxOf(): AudioContext | null { return audioCtx; }
