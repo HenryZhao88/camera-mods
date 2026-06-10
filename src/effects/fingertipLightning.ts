@@ -19,6 +19,7 @@ export class FingertipLightning implements Effect {
   mode = 'hold' as const;
   private held = false;
   private mounted = false;
+  private dirty = false;
   private view = new Container();
   private gfx = new Graphics();
   private ps: FxParticles | null = null;
@@ -37,11 +38,12 @@ export class FingertipLightning implements Effect {
   }
 
   start(): void { this.held = true; }
-  stop(): void { this.held = false; this.bolts = []; }
+  stop(): void { this.held = false; this.bolts = []; this.dirty = true; }
   isActive(): boolean { return this.held || (this.ps?.count ?? 0) > 0 || this.arcs.length > 0; }
   reset(): void {
     this.held = false; this.bolts = []; this.arcs = [];
     this.ps?.clear(); this.gfx.clear();
+    this.dirty = false;
     if (this.mounted) this.view.visible = false;
   }
 
@@ -75,6 +77,7 @@ export class FingertipLightning implements Effect {
             });
           }
         }
+        this.dirty = true;
       }
 
       const upTips = TIP_IDS.map((_, f) => f).filter(f => up[f]);
@@ -91,16 +94,22 @@ export class FingertipLightning implements Effect {
             bolt: genBolt({ x: a.x, y: a.y, angle: ang, length: len, branchChance: 0, jitter: 0.12 }),
             until: ctx.now + ARC_LIFE_MS,
           });
+          this.dirty = true;
         }
       }
     } else {
       this.bolts = [];
     }
 
+    const arcsBefore = this.arcs.length;
     this.arcs = this.arcs.filter(a => a.until > ctx.now);
+    if (this.arcs.length !== arcsBefore) this.dirty = true;
     this.ps?.update(dt);
     if (this.mounted) {
-      this.redraw();
+      if (this.dirty) {
+        this.dirty = false;
+        this.redraw();
+      }
       this.view.visible = this.isActive();
     }
   }

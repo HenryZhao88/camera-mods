@@ -31,6 +31,7 @@ export class PalmBlast implements Effect {
     this.view.addChild(this.ring, this.flashSprite, this.ps.view);
     stage.effects.addChild(this.view);
     this.mounted = true;
+    this.view.visible = false;
   }
 
   start(): void { this.pending = true; }
@@ -40,6 +41,7 @@ export class PalmBlast implements Effect {
     this.pending = false; this.t = -1;
     this.ps?.clear(); this.ring.clear();
     if (this.flashSprite) this.flashSprite.visible = false;
+    if (this.mounted) this.view.visible = false;
   }
 
   update(dt: number, ctx: RenderContext): void {
@@ -82,7 +84,10 @@ export class PalmBlast implements Effect {
 
     if (this.t >= 0) this.t += dt;
     this.ps?.update(dt);
-    if (this.mounted) this.redraw(ctx);
+    if (this.mounted) {
+      this.redraw(ctx);
+      this.view.visible = this.isActive();
+    }
   }
 
   private redraw(ctx: RenderContext): void {

@@ -21,6 +21,7 @@ export class PinchDraw implements Effect {
     this.view.filters = [new GlowFilter({ distance: 10, outerStrength: 2.2, color: NEON, quality: 0.25 })];
     stage.effects.addChild(this.view);
     this.mounted = true;
+    this.view.visible = false;
   }
 
   start(): void { this.drawing = true; this.current = []; this.strokes.push(this.current); }
@@ -35,9 +36,12 @@ export class PinchDraw implements Effect {
       this.current.push({ x: p.x * ctx.width, y: p.y * ctx.height });
       this.dirty = true;
     }
-    if (this.mounted && this.dirty) {
-      this.dirty = false;
-      this.redraw();
+    if (this.mounted) {
+      if (this.dirty) {
+        this.dirty = false;
+        this.redraw();
+      }
+      this.view.visible = this.isActive();
     }
   }
 
