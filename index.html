@@ -104,6 +104,33 @@
       }
       #idle .big { font-size: 22px; color: var(--fg); margin-bottom: 6px; }
 
+      #recorder {
+        position: absolute; inset: 0; z-index: 5;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(8, 10, 14, 0.55);
+      }
+      #recorder.hidden { display: none; }
+      .r-box {
+        text-align: center; padding: 28px 40px; border-radius: 14px;
+        background: rgba(12, 15, 22, 0.85);
+        border: 1px solid rgba(125, 249, 255, 0.35);
+        box-shadow: 0 0 40px rgba(125, 249, 255, 0.15);
+        max-width: 480px;
+      }
+      .r-title { font-family: 'Chakra Petch', sans-serif; font-size: 20px; color: #7df9ff; letter-spacing: 0.08em; }
+      .r-step { font-size: 11px; color: #8b94a7; margin-top: 2px; letter-spacing: 0.2em; text-transform: uppercase; }
+      .r-prompt { font-size: 16px; color: #e8ecf4; margin: 14px 0 6px; }
+      .r-count { font-family: 'Chakra Petch', sans-serif; font-size: 72px; color: #ffd27d; line-height: 1; margin: 10px 0; }
+      .r-ring {
+        width: 72px; height: 72px; margin: 12px auto; border-radius: 50%;
+        background: conic-gradient(#7df9ff calc(var(--p, 0) * 1%), rgba(255, 255, 255, 0.12) 0);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .r-ring-in { width: 56px; height: 56px; border-radius: 50%; background: #0c0f16; }
+      .r-msg { min-height: 18px; font-size: 13px; color: #ff9d9d; margin-top: 8px; }
+      .r-count.hidden, .r-ring.hidden, .r-retry.hidden { display: none; }
+      .r-actions { margin-top: 14px; display: flex; gap: 10px; justify-content: center; }
+
       /* ---- panel ---- */
       #panel {
         display: flex;
@@ -398,6 +425,20 @@
         <div id="idle">
           <div class="big">no signal</div>
           <div>press start to wake the camera</div>
+        </div>
+        <div id="recorder" class="hidden">
+          <div class="r-box">
+            <div class="r-title"></div>
+            <div class="r-step"></div>
+            <div class="r-prompt"></div>
+            <div class="r-count hidden"></div>
+            <div class="r-ring hidden"><div class="r-ring-in"></div></div>
+            <div class="r-msg"></div>
+            <div class="r-actions">
+              <button class="r-retry hidden">↻ Retry</button>
+              <button class="r-cancel">✕ Cancel</button>
+            </div>
+          </div>
         </div>
       </div>
       <aside id="panel">

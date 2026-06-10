@@ -17,6 +17,7 @@ export interface CompositorHooks {
     fired: string[],
     active: Set<string>,
   ) => void;
+  onHands?: (hands: HandResult[]) => void; // every frame, all tracked hands
 }
 
 // WebGL compositor: mirrored video sprite + effect layers + shake + transient
@@ -148,6 +149,7 @@ export class PixiCompositor {
 
     const hands = this.tracker.detect(this.camera.video, now);
     const hand = hands[0] ?? null;
+    this.hooks.onHands?.(hands);
 
     let face: FaceResult | null = null;
     if (this.trackFace && this.faceTracker.ready) {
