@@ -97,8 +97,9 @@ export class FingertipLightning implements Effect {
           this.dirty = true;
         }
       }
-    } else {
+    } else if (this.bolts.length > 0) {
       this.bolts = [];
+      this.dirty = true; // erase stale bolts when the hand/hold disappears
     }
 
     const arcsBefore = this.arcs.length;
