@@ -1,4 +1,5 @@
 import { Texture } from 'pixi.js';
+import { genWeb } from './webGeometry';
 
 function canvasOf(w: number, h: number, draw: (c: CanvasRenderingContext2D) => void): HTMLCanvasElement {
   const cv = document.createElement('canvas');
@@ -70,6 +71,33 @@ export function shieldHexTexture(): Texture {
   }));
 }
 
+// 1024² spider web drawn from pure geometry; line width tapers outward.
+export function webTexture(seed: number): Texture {
+  const SIZE = 1024, C = SIZE / 2, R = SIZE * 0.48;
+  return Texture.from(canvasOf(SIZE, SIZE, c => {
+    const web = genWeb(seed);
+    c.strokeStyle = 'rgba(255,255,255,0.6)';
+    c.shadowColor = 'rgba(255,255,255,0.35)';
+    c.shadowBlur = 4;
+    for (const s of web.spokes) {
+      c.lineWidth = 3.2;
+      c.beginPath();
+      c.moveTo(C + s.x1 * R, C + s.y1 * R);
+      c.lineTo(C + s.x2 * R, C + s.y2 * R);
+      c.stroke();
+    }
+    for (const ring of web.rings) {
+      c.lineWidth = Math.max(1, 3 - ring.r * 2.2); // taper outward
+      for (const seg of ring.segments) {
+        c.beginPath();
+        c.moveTo(C + seg.ax * R, C + seg.ay * R);
+        c.quadraticCurveTo(C + seg.cx * R, C + seg.cy * R, C + seg.bx * R, C + seg.by * R);
+        c.stroke();
+      }
+    }
+  }));
+}
+
 export interface FxTextures {
   glow: Texture;
   streak: Texture;
@@ -84,6 +112,6 @@ export function buildFxTextures(): FxTextures {
     streak: streakTexture(),
     vignette: vignetteTexture(),
     shieldHex: shieldHexTexture(),
-    webs: [],
+    webs: [webTexture(0.17), webTexture(0.52), webTexture(0.83)],
   };
 }

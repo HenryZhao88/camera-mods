@@ -184,4 +184,27 @@ export function beamFire(): void {
   osc.stop(now + 1.25);
 }
 
+// Band-passed noise chirp with a fast pitch drop — the classic web-shooter thwip.
+export function thwip(): void {
+  const ctx = ac();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const dur = 0.14;
+  const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.Q.value = 4;
+  bp.frequency.setValueAtTime(2600, now);
+  bp.frequency.exponentialRampToValueAtTime(500, now + dur);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.5, now);
+  g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  noise.connect(bp).connect(g).connect(ctx.destination);
+  noise.start(now);
+}
+
 function audioCtxOf(): AudioContext | null { return audioCtx; }
