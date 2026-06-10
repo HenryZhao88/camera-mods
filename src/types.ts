@@ -48,11 +48,10 @@ export interface EffectStage {
 export interface Effect {
   id: string;
   mode: EffectMode;
+  init?(stage: EffectStage): void; // mount display objects (Task 6 makes this required)
   start(): void;
   stop(): void;
-  update(dt: number, ctx: RenderContext): void;
-  render(g: CanvasRenderingContext2D, ctx: RenderContext): void;
-  isActive(): boolean;
-  reset?(): void;          // wipe all visible state (used by "Clear screen")
-  init?(stage: EffectStage): void; // mount display objects (Task 6 makes this required)
+  update(dt: number, ctx: RenderContext): void; // mutate display objects
+  isActive(): boolean;             // drives the card glow in the UI
+  reset?(): void;                  // hide/clear all visible state ("Clear screen")
 }
