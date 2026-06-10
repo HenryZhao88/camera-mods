@@ -72,8 +72,8 @@ Make an effect's pose and it fires; its card glows in the effect's color.
 - **🕸 Web Shot** is *one-shot* — the web splats onto the lens and peels off ~5s later.
 - **🌀 Kamehameha** is *automatic* (on by default) — hold your **palms together** to
   charge the orb, then **push toward the camera** to fire. Breaking the pose drains it.
-- **🔫 Finger Gun** is *automatic* (on by default) and **dual-wields** — make a finger gun (index out,
-  thumb up) and **drop your thumb** to fire: muzzle flash + bang sound. Two hands, two guns.
+- **🔫 Finger Gun** is *automatic* — make a finger gun (index out, thumb up) and
+  **drop your thumb** to fire: muzzle flash + bang sound. **Dual-wields**: two hands, two guns.
 - **🌙 Dim** is *automatic & gradual* — make a **fist** to fade the room down over
   ~1.5s, **open your hand** to fade it back up.
 - **👁️ Lightning Eyes** and **🔥 Fire Breath** are **off by default** (they use face
