@@ -55,6 +55,10 @@ export class EnergyShield implements Effect {
     if (this.held) {
       this.held = false;
       shieldDown();
+      // small release ripple (spec §4.2) — only if the shield actually showed
+      if (this.placed && this.presence > 0.2) {
+        this.stage?.fx.transients.ripple(this.x, this.y, { amplitude: 10, wavelength: 90, duration: 0.35 });
+      }
     }
   }
 
