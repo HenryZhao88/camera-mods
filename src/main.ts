@@ -628,6 +628,8 @@ window.addEventListener('keydown', e => {
   if (document.body.classList.contains('clean') && (e.key === 'Escape' || e.key === 'c')) exitClean();
 });
 window.addEventListener('keydown', e => {
+  // don't hijack typing in form controls (sliders, selects, file input)
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
   if (e.key === 'x' || e.key === 'X') domain.collapse();
 });
 
