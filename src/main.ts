@@ -560,6 +560,9 @@ function stop() {
   if (recorder.isOpen) recorder.cancel();
   compositor?.stop();
   if (compositor) compositor.trackFace = false;
+  // frames stop, so self-driven effects can never reach their own teardown —
+  // reset them all (kills domain rumble / beam charge / shield hum mid-sound)
+  for (const e of effects) e.reset?.();
   camera.stop();
   running = false;
   liveDot.classList.remove('live');
