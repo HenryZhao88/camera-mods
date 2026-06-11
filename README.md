@@ -3,7 +3,7 @@
 Turn hand gestures into movie-grade webcam VFX, rendered on WebGL. You calibrate
 your *own* hand symbols, then throw branching lightning, raise an energy shield,
 charge a kamehameha at the lens, shoot webs at the camera, dual-wield finger guns,
-or draw glowing neon lines in the air. Pipe it into Zoom / Meet / Discord with OBS
+draw glowing neon lines in the air, or expand a cursed domain. Pipe it into Zoom / Meet / Discord with OBS
 Virtual Camera.
 
 ---
@@ -66,6 +66,10 @@ walk you through each pose. A **strict ↔ loose** sensitivity slider and a **�
 > **Heads-up:** 🌙 **Dim** automatically watches for open-hand vs. fist, so avoid
 > using **Fist** as an activation pose for another effect — they'd fight.
 
+> **Heads-up:** a clasped sign sits inside the 🌀 Kamehameha's "palms together" zone —
+> if both are enabled and they fight, record distinct custom signs for one (or both),
+> or disable the one you're not using.
+
 ### Step 3 — Play!
 Make an effect's pose and it fires; its card glows in the effect's color.
 - **Lightning** and **Draw** are *held* — they run while you hold the pose.
@@ -75,6 +79,10 @@ Make an effect's pose and it fires; its card glows in the effect's color.
 - **🌀 Kamehameha** is *automatic* (on by default) — hold your **palms together** to
   charge the orb, then **push toward the camera** to fire. Breaking the pose drains it.
   The charge pose is customizable too (Trigger → ✎ Custom records any two-hand pose).
+- **⛩ Domain** is *automatic* — hold a **two-hand clasped sign** for ~1 second and your
+  domain expands: reality bleeds away, a shrine rises behind you, and dismantle slashes
+  rip across the frame until you press **X** (or the **⛩ Collapse** button). Record your
+  own sign with Trigger → ✎ Custom.
 - **🔫 Finger Gun** is *automatic* — make a finger gun (index out, thumb up) and
   **drop your thumb** to fire: muzzle flash + bang sound. **Dual-wields**: two hands, two guns
   — or record your **own two-pose trigger** (Trigger → ✎ Custom: a READY pose, then a FIRE pose).
@@ -187,6 +195,9 @@ Webcam → HandTracker (MediaPipe, 2 hands) → GestureEngine → EffectDriver �
 | `src/effects/fireBreath.ts` | Mouth-driven fire particle stream (face tracking) |
 | `src/effects/lightningEyes.ts` | Electric arcs from the eyes (face) |
 | `src/effects/gunShot.ts` | Finger-gun fire: muzzle flash + sparks + WebAudio bang |
+| `src/effects/domainCore.ts` / `domainExpansion.ts` | Domain cast state machine / presenter |
+| `src/segmenter.ts` | MediaPipe person segmentation (behind-you compositing) |
+| `src/fx/inkBlot.ts` | Seeded ink-blot geometry (domain bleed mask) |
 | `src/effects/*.ts` | The other effects |
 | `src/main.ts` | Control-deck UI + wiring |
 
