@@ -288,16 +288,20 @@ export class DomainExpansion implements Effect {
     const maskTex = this.segmenter.maskTexture;
     if (!maskTex || !this.stage) { this.teardownCutout(); return; }
 
+    // the compositor's video sprite is always the world's first child once frames run
+    const video = this.stage.world.children[0];
+    if (!(video instanceof Sprite)) return;
+
     if (!this.cutout) {
-      // find the compositor's video texture via the world's first child
-      const video = this.stage.world.children[0] as Sprite;
-      if (!(video instanceof Sprite)) return;
       this.cutout = new Sprite(video.texture);
       this.cutout.scale.x = -1; // mirror like the main video sprite
       this.cutoutMask = new Sprite(maskTex);
       this.backdropGroup.addChild(this.cutout, this.cutoutMask);
       this.cutout.mask = this.cutoutMask;
     }
+    // re-read every frame: the compositor recreates the video texture on
+    // camera-dims changes, and a stale reference would render a destroyed texture
+    this.cutout.texture = video.texture;
     this.cutout.x = w;
     this.cutout.visible = true;
     if (this.cutoutMask) {
