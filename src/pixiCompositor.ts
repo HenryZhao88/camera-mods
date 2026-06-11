@@ -30,6 +30,7 @@ export class PixiCompositor {
   private app = new Application();
   private root = new Container();      // gets the screen-filter rig (final grade)
   private world = new Container();     // shaken; video + effects + overlay
+  private backdropLayer = new Container();
   private effectsLayer = new Container();
   private overlayGfx = new Graphics();
   private screenLayer = new Container(); // "on the lens": splats, flashes, dim grade
@@ -76,7 +77,7 @@ export class PixiCompositor {
     });
     this.app.ticker.stop(); // we drive rendering from our own rAF loop
 
-    this.world.addChild(this.effectsLayer, this.overlayGfx);
+    this.world.addChild(this.backdropLayer, this.effectsLayer, this.overlayGfx);
     this.root.addChild(this.world, this.screenLayer);
     this.app.stage.addChild(this.root);
 
@@ -85,6 +86,7 @@ export class PixiCompositor {
 
     const stage: EffectStage = {
       world: this.world,
+      backdrop: this.backdropLayer,
       effects: this.effectsLayer,
       screen: this.screenLayer,
       fx: { shake: this.shake, transients: this.transients, textures: this.textures },

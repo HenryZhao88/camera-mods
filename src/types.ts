@@ -55,6 +55,7 @@ export interface RenderContext {
 // Layers + shared services an effect mounts into, handed over once by the compositor.
 export interface EffectStage {
   world: Container;     // shaken world (video + effects + overlay)
+  backdrop: Container;  // behind-the-user layer (between video and effects)
   effects: Container;   // world-space effect layer (most visuals go here)
   screen: Container;    // "on the lens" — not shaken (splats, dim grade, flashes)
   fx: {
