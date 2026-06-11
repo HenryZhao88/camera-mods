@@ -206,3 +206,19 @@ export function beamFlow(): RecordFlow {
     }),
   };
 }
+
+export function domainFlow(): RecordFlow {
+  return {
+    effectId: 'domain-expansion',
+    title: 'Record: Domain sign',
+    stages: [{ prompt: 'Hold your DOMAIN sign with both hands', handsNeeded: 2 }],
+    build: ([cap]) => ({
+      kind: 'two-hand',
+      effectId: 'domain-expansion',
+      left: cap.hands[0],
+      right: cap.hands[1],
+      span: cap.span ?? 1,
+      createdAt: new Date().toISOString(),
+    }),
+  };
+}

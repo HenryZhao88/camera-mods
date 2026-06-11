@@ -10,7 +10,7 @@ import {
   loadTemplates, saveTemplate, removeTemplate, clearTemplates, exportTemplates, importTemplates,
 } from './gesture/templateStore';
 import { PixiCompositor } from './pixiCompositor';
-import { RecorderWizard, singlePoseFlow, gunFlow, beamFlow, type RecordFlow } from './recorder';
+import { RecorderWizard, singlePoseFlow, gunFlow, beamFlow, domainFlow, type RecordFlow } from './recorder';
 import { FingertipLightning } from './effects/fingertipLightning';
 import { DimLights } from './effects/dimLights';
 import { PalmBlast } from './effects/palmBlast';
@@ -21,6 +21,8 @@ import { GunShot } from './effects/gunShot';
 import { EnergyShield } from './effects/energyShield';
 import { EnergyBeam } from './effects/energyBeam';
 import { WebShot } from './effects/webShot';
+import { DomainExpansion } from './effects/domainExpansion';
+import { PersonSegmenter } from './segmenter';
 import type { Effect, StagedTemplate, TwoHandTemplate } from './types';
 import { SCREEN_FILTERS, type ScreenFilter } from './filters';
 
@@ -51,6 +53,8 @@ const gun = new GunShot();
 const shield = new EnergyShield();
 const beam = new EnergyBeam();
 const web = new WebShot();
+const segmenter = new PersonSegmenter(camera);
+const domain = new DomainExpansion(segmenter);
 let faceReady = false;
 
 // Face-tracked effects default off (a second ML model is heavy); the rest default on.
@@ -60,12 +64,12 @@ function effectDefaultEnabled(id: string): boolean { return !FACE_EFFECTS.has(id
 // self-driven effects toggled directly via their .enabled flag
 const selfDriven: Record<string, { enabled: boolean }> = {
   'dim-lights': dim, 'fire-breath': fire, 'lightning-eyes': eyes, 'gun-shot': gun,
-  'energy-beam': beam,
+  'energy-beam': beam, 'domain-expansion': domain,
 };
 for (const [id, fx] of Object.entries(selfDriven)) fx.enabled = isEnabled(id, effectDefaultEnabled(id));
 
 // Render order (back to front): dim darkens first, glowing effects layer on top.
-const effects: Effect[] = [dim, lightning, blast, fire, eyes, gun, shield, beam, web, pinch];
+const effects: Effect[] = [dim, lightning, blast, fire, eyes, gun, shield, beam, web, domain, pinch];
 const engine = new GestureEngine([], { cooldownMs: 800, exclusive: true });
 let compositor: PixiCompositor | null = null;
 let running = false;
@@ -75,6 +79,7 @@ const recorder = new RecorderWizard();
 function flowFor(def: CardDef): RecordFlow {
   if (def.id === 'gun-shot') return gunFlow();
   if (def.id === 'energy-beam') return beamFlow();
+  if (def.id === 'domain-expansion') return domainFlow();
   return singlePoseFlow(def.id, def.name);
 }
 
@@ -88,6 +93,10 @@ function pushCustomTriggers() {
   const beamTpl = templates.find(t => t.effectId === 'energy-beam' && t.kind === 'two-hand') as TwoHandTemplate | undefined;
   const beamOn = getChoice('energy-beam', 'default') === 'custom' && beamTpl;
   beam.setCustomCharge(beamOn ? beamTpl : null, () => sensitivity.get('energy-beam') ?? DEFAULT_THRESHOLD);
+
+  const domainTpl = templates.find(t => t.effectId === 'domain-expansion' && t.kind === 'two-hand') as TwoHandTemplate | undefined;
+  const domainOn = getChoice('domain-expansion', 'default') === 'custom' && domainTpl;
+  domain.setCustomSign(domainOn ? domainTpl : null, () => sensitivity.get('domain-expansion') ?? DEFAULT_THRESHOLD);
 }
 
 interface CardDef {
@@ -134,6 +143,12 @@ const CARDS: CardDef[] = [
     desc: 'Automatic — hold your <b>palms together</b> to charge, then <b>push at the camera</b> to fire.',
     bindable: false,
     customTrigger: 'Default (palms together)',
+  },
+  {
+    id: 'domain-expansion', icon: '⛩', name: 'Domain', color: '#ff2d2d',
+    desc: 'Hold your <b>two-hand sign</b> ~1s to expand your domain — press <b>X</b> (or Collapse) to end it.',
+    bindable: false, customTrigger: 'Default (hands clasped)',
+    extra: () => button('⛩ Collapse', () => domain.collapse()),
   },
   {
     id: 'gun-shot', icon: '🔫', name: 'Finger Gun', color: '#ff5a5a',
@@ -515,7 +530,8 @@ async function start() {
               (id === 'gun-shot' && gun.isActive()) ||
               (id === 'energy-beam' && beam.isActive()) ||
               (id === 'energy-shield' && shield.isActive()) ||
-              (id === 'web-shot' && web.isActive());
+              (id === 'web-shot' && web.isActive()) ||
+              (id === 'domain-expansion' && domain.isActive());
             el.classList.toggle('active', lit);
           }
           handEl.textContent = hand ? '✋ hand' : 'no hand';
@@ -610,6 +626,9 @@ function exitClean() { document.body.classList.remove('clean'); }
 exitCleanBtn.onclick = exitClean;
 window.addEventListener('keydown', e => {
   if (document.body.classList.contains('clean') && (e.key === 'Escape' || e.key === 'c')) exitClean();
+});
+window.addEventListener('keydown', e => {
+  if (e.key === 'x' || e.key === 'X') domain.collapse();
 });
 
 // ---- boot ----
