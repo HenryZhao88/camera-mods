@@ -1,5 +1,6 @@
 import { Texture } from 'pixi.js';
 import { genWeb } from './webGeometry';
+import { genInkBlot } from './inkBlot';
 
 function canvasOf(w: number, h: number, draw: (c: CanvasRenderingContext2D) => void): HTMLCanvasElement {
   const cv = document.createElement('canvas');
@@ -98,12 +99,85 @@ export function webTexture(seed: number): Texture {
   }));
 }
 
+// 512² white ink blot with a softly blurred edge — used as an alpha mask sprite.
+export function inkBlotTexture(seed: number): Texture {
+  const SIZE = 512, C = SIZE / 2, R = SIZE * 0.48;
+  return Texture.from(canvasOf(SIZE, SIZE, c => {
+    const pts = genInkBlot(seed);
+    c.fillStyle = '#ffffff';
+    c.filter = 'blur(2px)';
+    c.beginPath();
+    c.moveTo(C + pts[0].x * R, C + pts[0].y * R);
+    for (let i = 1; i < pts.length; i++) c.lineTo(C + pts[i].x * R, C + pts[i].y * R);
+    c.closePath();
+    c.fill();
+  }));
+}
+
+// 1024² horned-shrine silhouette: stepped plinth, columns, two-tier pagoda roof
+// with upswept eaves, horn curves — black fill with a crimson rim glow.
+export function shrineTexture(): Texture {
+  const W = 1024, H = 1024;
+  return Texture.from(canvasOf(W, H, c => {
+    c.fillStyle = '#000000';
+    c.shadowColor = '#b3122a';
+    c.shadowBlur = 6;
+    c.shadowOffsetY = -2;
+
+    // stepped plinth (three slabs)
+    c.fillRect(112, 880, 800, 60);
+    c.fillRect(162, 820, 700, 64);
+    c.fillRect(212, 760, 600, 64);
+
+    // four columns
+    for (const x of [262, 412, 562, 712]) c.fillRect(x, 560, 50, 204);
+
+    // lower roof: wide slab with upswept eaves (quadratic curves)
+    c.beginPath();
+    c.moveTo(132, 560);
+    c.quadraticCurveTo(212, 540, 512, 528);
+    c.quadraticCurveTo(812, 540, 892, 560);
+    c.quadraticCurveTo(862, 496, 512, 484);
+    c.quadraticCurveTo(162, 496, 132, 560);
+    c.closePath();
+    c.fill();
+
+    // upper structure
+    c.fillRect(352, 376, 320, 108);
+
+    // upper roof, steeper sweep
+    c.beginPath();
+    c.moveTo(282, 376);
+    c.quadraticCurveTo(372, 352, 512, 344);
+    c.quadraticCurveTo(652, 352, 742, 376);
+    c.quadraticCurveTo(692, 296, 512, 288);
+    c.quadraticCurveTo(332, 296, 282, 376);
+    c.closePath();
+    c.fill();
+
+    // horns rising from the upper roof corners (thick curved strokes)
+    c.strokeStyle = '#000000';
+    c.lineWidth = 26;
+    c.lineCap = 'round';
+    c.beginPath();
+    c.moveTo(352, 312);
+    c.quadraticCurveTo(282, 200, 318, 96);
+    c.stroke();
+    c.beginPath();
+    c.moveTo(672, 312);
+    c.quadraticCurveTo(742, 200, 706, 96);
+    c.stroke();
+  }));
+}
+
 export interface FxTextures {
   glow: Texture;
   streak: Texture;
   vignette: Texture;
   shieldHex: Texture;
   webs: Texture[]; // filled by Task 12 (webTexture); empty until then
+  inkBlots: Texture[];
+  shrine: Texture;
 }
 
 export function buildFxTextures(): FxTextures {
@@ -113,5 +187,7 @@ export function buildFxTextures(): FxTextures {
     vignette: vignetteTexture(),
     shieldHex: shieldHexTexture(),
     webs: [webTexture(0.17), webTexture(0.52), webTexture(0.83)],
+    inkBlots: [inkBlotTexture(0.21), inkBlotTexture(0.55), inkBlotTexture(0.88)],
+    shrine: shrineTexture(),
   };
 }
